@@ -16,10 +16,10 @@ ENTITY mmu IS  -- memory management unit a.k.a memory allocator
 END ENTITY mmu;
 
 ARCHITECTURE syn_mmu OF mmu IS
-
   SIGNAL hdList                : slv(31 DOWNTO 0);
   SIGNAL mmu_state, mmu_nstate : allocator_state_type;
 BEGIN
+  
   mmu_fsm_comb : PROCESS(mmu_state, argu, mcin, mmu_init)
   BEGIN
     CASE mmu_state IS

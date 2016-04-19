@@ -3,18 +3,22 @@ USE ieee.std_logic_1164.ALL;
 USE ieee.numeric_std.ALL;
 
 PACKAGE malloc_pack IS
-  -- --------------------  put here just for now
+
   CONSTANT CONST_RESET : STD_LOGIC := '1';  -- depends on if active high
 
-  -- constants
-  CONSTANT MEM_BASE : STD_LOGIC_VECTOR (31 DOWNTO 0) := x"10000000";
+  ALIAS slv IS STD_LOGIC_VECTOR;
+
+  -- CONFIGURATION CONSTANTS
+  CONSTANT MEM_BASE       : slv(31 DOWNTO 0) := x"10000000";
+  CONSTANT MEM_BLOCK_SIZE : slv(31 DOWNTO 0) := x"00000010";  -- 16B
+  CONSTANT LIST_LENGTH    : INTEGER          := 16384;  -- total mem = 16384*16B
+
   TYPE mmu_init_type IS RECORD
     start : STD_LOGIC;
     done  : STD_LOGIC;
   END RECORD;
 
   -- allocator control
-  ALIAS slv IS STD_LOGIC_VECTOR;
   TYPE allocator_cmd_type IS (malloc, free);
   TYPE allocator_com_type IS RECORD
     start : STD_LOGIC;
@@ -43,4 +47,12 @@ PACKAGE malloc_pack IS
     data  : slv(31 DOWNTO 0);
     cmd   : mem_control_cmd_type;
   END RECORD;
+
+  -- malloc initialisation
+  TYPE initialisation_state IS (init_state_idle,
+                                init_state_compute,
+                                init_state_write,
+                                init_state_wait,
+                                init_state_done);
+
 END PACKAGE;
