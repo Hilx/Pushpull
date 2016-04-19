@@ -70,6 +70,7 @@ BEGIN
           -- mem conrtol code
           output.addr    <= currentNodePtr;
           output.data    <= nextNodePtr;
+          output.cmd     <= mc_write;
           -- update currentNodePtr
           currentNodePtr <= nextNodePtr;
           -- increment node count
