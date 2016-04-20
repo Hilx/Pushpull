@@ -2,7 +2,7 @@ LIBRARY ieee;
 USE ieee.std_logic_1164.ALL;
 USE ieee.numeric_std.ALL;
 USE work.ALL;
-USE work.malloc_pack.ALL;  -- memory management package
+USE work.malloc_pack.ALL;  -- memory management packageLIBRARY IEEE;
 
 ENTITY malloc_wrapper IS
   PORT(
