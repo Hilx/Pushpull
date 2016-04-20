@@ -1,21 +1,26 @@
 LIBRARY ieee;
 USE ieee.std_logic_1164.ALL;
 USE ieee.numeric_std.ALL;
+USE work.malloc_pack.ALL;
+USE work.dsl_pack.ALL;
 
-PACKAGE dsa_top_pack IS
-  ALIAS slv IS standard_logic_vector;
+ENTITY dsl_wrapper IS
+  PORT(
+    clk:std_logic;
+    rst:std_logic;
+    -- dsl communication
+    dsl_in : IN dsl_com_in_type;
+    dsl_out :OUT dsl_com_out_type;
+    -- allocator communication
+    alloc_in : IN allocator_com_type;
+    alloc_out: OUT allocator_com_type;
+    -- memory controller communication
+    mcin :IN mem_control_type;
+    mcout : OUT mem_control_type;
+    );
+END ENTITY dsl_wrapper;
 
-  TYPE dsa_top_mem_comd_type IS (mwrite, mread);
+ARCHITECTURE syn_dsl_wrapper OF dsl_wrapper IS
+BEGIN
 
-  TYPE dsa_top_mem_control_type IS RECORD
-    cmd        : dsa_top_mem_cmd_type;
-    write_data : slv(31 DOWNTO 0);
-    read_data  : slv(31 DOWNTO 0);
-    addr       : slv(31 DOWNTO 0);
-    start      : STD_LOGIC;
-    done       : STD_LOGIC;
-
-    
-  END RECORD;
-
-END PACKAGE;
+END ARCHITECTURE syn_dsl_wrapper;
