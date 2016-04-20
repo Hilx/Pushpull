@@ -8,6 +8,7 @@ USE work.dsl_pack.ALL;                  -- data structure logic package
 
 ENTITY dsa_top_wrapper IS
   PORT(
+    PTR_OUT       : OUT STD_LOGIC;         -- for testing malloc.
     clk           : IN  STD_LOGIC;
     rst           : IN  STD_LOGIC;
     mmu_init_bit  : IN  STD_LOGIC;         -- allocator initialisation command
@@ -166,6 +167,9 @@ BEGIN
       END IF;
     END IF;
   END PROCESS;
+
+  -- FOR TESTING
+  PTR_OUT <= alloc_resp.ptr;
   
 END ARCHITECTURE syn_dsa_top_wrapper;
 
