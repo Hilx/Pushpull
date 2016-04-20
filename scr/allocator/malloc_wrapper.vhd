@@ -1,8 +1,8 @@
-LIBRARY IEEE;
-USE IEEE.std_logic_1164.ALL;
-USE IEEE.numeric_std.ALL;
+LIBRARY ieee;
+USE ieee.std_logic_1164.ALL;
+USE ieee.numeric_std.ALL;
 USE work.ALL;
-use work.malloc_pack.all;
+USE work.malloc_pack.ALL;  -- memory management packageLIBRARY IEEE;
 
 ENTITY malloc_wrapper IS
   PORT(
@@ -28,12 +28,12 @@ ARCHITECTURE syn_malloc_wrapper OF malloc_wrapper IS
 
   -- channel select FSM
   TYPE malloc_wrapper_state IS (mw_state_norm, mw_state_init);
-  SIGNAL mw_state, mw_nstate:malloc_wrapper_state;
+  SIGNAL mw_state, mw_nstate : malloc_wrapper_state;
 BEGIN
   -- wiring components
   mmu_init.start <= mmu_init_bit;
-  
-  mallocblock: ENTITY mmu
+
+  mmu0 : ENTITY mmu
     PORT MAP(
       clk      => clk,
       rst      => rst,
@@ -43,15 +43,15 @@ BEGIN
       mcout    => mmu_mcout,
       mmu_init => mmu_init
       );
-      
-  mallocinitblock : ENTITY mmu_init
+
+  init0 : ENTITY mmu_init_block
     PORT MAP(
-      clk    => clk,
-      rst    => rst,
-      start  => mmu_init_bit,
-      done   => mmu_init.done,
-      input  => init_input,
-      output => init_output
+      clk   => clk,
+      rst   => rst,
+      start => mmu_init_bit,
+      done  => mmu_init.done,
+      mcin  => init_input,
+      mcout => init_output
       );
 
   -- channel select FSM
@@ -68,7 +68,7 @@ BEGIN
       WHEN mw_state_init =>
         mw_nstate <= mw_state_init;
         IF mmu_init.done = '1' THEN
-          mw_nstate<= mw_state_norm;
+          mw_nstate <= mw_state_norm;
         END IF;
     END CASE;
 
