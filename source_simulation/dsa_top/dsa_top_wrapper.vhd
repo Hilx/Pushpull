@@ -80,7 +80,7 @@ BEGIN
   -- memory access arbitrator fsm stuff
   -- TYPE maa_state_type(maa_state_ds, maa_state_alloc);
   maa_fsm_comb : PROCESS(maa_state,
-                         mmu_init_bit, mmu_init_done,
+                         mmu_init_bit, mmu_init_done_i,
                          alloc_cmd, alloc_resp)
   BEGIN
     maa_nstate <= maa_state_ds;

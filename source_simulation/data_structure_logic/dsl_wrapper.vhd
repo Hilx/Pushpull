@@ -19,7 +19,7 @@ ENTITY dsl_wrapper IS
     alloc_out : OUT allocator_com_type;
     -- memory controller communication
     mcin      : IN  mem_control_type;
-    mcout     : OUT mem_control_type;
+    mcout     : OUT mem_control_type
     );
 END ENTITY dsl_wrapper;
 
@@ -37,7 +37,7 @@ BEGIN
     alloc_out.cmd <= malloc;
     IF dsl_in.cmd = delete THEN
       alloc_out.cmd <= free;
-      alloc_out.ptr <= 0x"00000020";
+      alloc_out.ptr <= x"00000020";
     END IF;
   END PROCESS;
 
