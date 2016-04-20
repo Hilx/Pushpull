@@ -15,7 +15,7 @@ PACKAGE dsl_pack IS
   END RECORD;
 
   TYPE dsl_com_out_type IS RECORD
-    ptr  : slv(31 DOWNTO 0);
+    data : slv(31 DOWNTO 0);
     done : STD_LOGIC;
   END RECORD;
 

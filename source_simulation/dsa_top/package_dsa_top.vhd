@@ -16,4 +16,10 @@ PACKAGE dsa_top_pack IS
     done       : STD_LOGIC;
   END RECORD;
 
+  -- memory access arbitrator fsm stuff
+  TYPE maa_state_type(maa_state_ds, maa_state_alloc);
+
+  -- FOR PURPOSE OF TESTING MALLOC FOR NOW, translator fsm stuff
+  TYPE tra_state_type(tra_state_idle, tra_state_start, tra_state_wait, tra_state_done);
+
 END PACKAGE;
