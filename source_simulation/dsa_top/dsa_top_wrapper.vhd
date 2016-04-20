@@ -124,6 +124,14 @@ BEGIN
 
   dsl_request.cmd <= request(1 DOWNTO 0);
 
+  tra_cmd_comb : PROCESS(request)
+  BEGIN
+    dsl_request.cmd <= insert;
+    IF request(1 DOWNTO 0) = b"01" THEN
+      dsl_request.cmd <= delete;
+    END IF;
+  END PROCESS;
+
   tra_fsm_comb : PROCESS(tra_state, request, del_response)
   BEGIN
     tra_nstate <= tra_state_idle;
