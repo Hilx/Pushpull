@@ -8,7 +8,7 @@ PACKAGE tb_pack_v0 IS
   TYPE tb_fsm_v0_type IS (idle,
                           init, initing,
                           ready, command, busy, check,
-                          finish);
+                          donestate);
 
   -- -------------------------------------
   -- ----- TESTING INPUT -----------------

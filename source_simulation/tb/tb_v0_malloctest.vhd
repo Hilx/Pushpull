@@ -95,9 +95,9 @@ BEGIN
       WHEN check =>
         tb_nstate <= command;
         IF myTest(test_index).last = '1' THEN
-          tb_nstate <= finish;
+          tb_nstate <= donestate;
         END IF;
-      WHEN finish =>
+      WHEN donestate =>
         ASSERT false REPORT "TEST FINISHED" SEVERITY failure;  -- stop tb
     END CASE;
   END PROCESS;
@@ -126,7 +126,5 @@ BEGIN
       END CASE;
     END IF;  -- if reset stuff    
   END PROCESS;
-
-
 
 END ARCHITECTURE behav_tb_v0;
