@@ -13,10 +13,10 @@ PACKAGE dsa_top_pack IS
                          tra_state_start,
                          tra_state_wait,
                          tra_state_done);
-
-  TYPE dsa_request_type IS RECORD
-    request_in : slv(31 DOWNTO 0);
-    start      : STD_LOGIC;
-  END RECORD;
+                         
+                         type dsa_request_type is record
+                            request_in : slv(31 downto 0);
+                            start :std_logic;
+                        end record;
 
 END PACKAGE;

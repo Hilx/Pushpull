@@ -10,8 +10,8 @@ USE work.dsl_pack.ALL;
 
 ENTITY dsl_wrapper IS
   PORT(
-    clk       : IN  STD_LOGIC;
-    rst       : IN  STD_LOGIC;
+    clk       :     STD_LOGIC;
+    rst       :     STD_LOGIC;
     -- dsl communication
     dsl_in    : IN  dsl_com_in_type;
     dsl_out   : OUT dsl_com_out_type;

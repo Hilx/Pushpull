@@ -9,10 +9,10 @@ USE work.dsl_pack.ALL;                  -- data structure logic package
 
 ENTITY dsa_top_wrapper IS
   PORT(
-    PTR_OUT       : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);  -- for testing malloc
+    PTR_OUT       : OUT std_logic_vector(31 downto 0);         -- for testing malloc.
     clk           : IN  STD_LOGIC;
     rst           : IN  STD_LOGIC;
-    mmu_init_bit  : IN  STD_LOGIC;      -- allocator initialisation command
+    mmu_init_bit  : IN  STD_LOGIC;         -- allocator initialisation command
     mmu_init_done : OUT STD_LOGIC;
     -- dsl communication
     request       : IN  dsa_request_type;  -- untranslated request input
@@ -164,7 +164,7 @@ BEGIN
       tra_state <= tra_state_idle;
     ELSE
       IF tra_state = tra_state_start THEN
-        dsl_request.start <= '1';
+     dsl_request.start <= '1';
       END IF;
     END IF;
   END PROCESS;
