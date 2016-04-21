@@ -38,7 +38,7 @@ BEGIN
     alloc_out.cmd <= malloc;
     IF dsl_in.cmd = delete THEN
       alloc_out.cmd <= free;
-      alloc_out.ptr <= x"00000020";
+      alloc_out.ptr <= x"00000010";
     END IF;
   END PROCESS;
 

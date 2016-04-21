@@ -8,9 +8,9 @@ PACKAGE config_pack IS
   CONSTANT CONST_RESET : STD_LOGIC := '1';  -- active high 1, active low 0
 
   -- CONFIGURATION CONSTANTS
-  CONSTANT MEM_BASE       : slv(31 DOWNTO 0) := x"10000000";
-  CONSTANT MEM_BLOCK_SIZE : slv(31 DOWNTO 0) := x"00000010";  -- 16B
-  CONSTANT LIST_LENGTH    : INTEGER          := 16384;  -- total mem = 16384*16B
+  CONSTANT MEM_BASE       : slv(31 DOWNTO 0) := x"00000000";
+  CONSTANT MEM_BLOCK_SIZE : slv(31 DOWNTO 0) := x"00000002";  -- 16B
+  CONSTANT LIST_LENGTH    : INTEGER          := 40;  -- total mem = 16384*16B
 
   -- memory controller related signals
 

@@ -1,16 +1,22 @@
 LIBRARY ieee;
 USE ieee.std_logic_1164.ALL;
 USE ieee.numeric_std.ALL;
+USE std.textio.ALL; -- write to file
+USE ieee.std_logic_textio.ALL;          -- write to file 
 USE work.ALL;
 USE work.config_pack.ALL;
 USE work.dsa_top_pack.ALL;
-use work.dsl_pack.all;
+USE work.dsl_pack.ALL;
 USE work.tb_pack_v0.ALL;                -- malloc-only testing tb package
 
 ENTITY tb_v0 IS
 END ENTITY tb_v0;
 
 ARCHITECTURE behav_tb_v0 OF tb_v0 IS
+  -- write to file
+  FILE fout : TEXT OPEN write_mode IS "TEST_RESULT.txt";
+
+  -- --------
   ALIAS slv IS STD_LOGIC_VECTOR;
   -- system signals
   SIGNAL clk           : STD_LOGIC;
@@ -52,8 +58,8 @@ BEGIN
       request       => dsa_req,
       response      => dsa_response,
       -- memory controller communciation
-      tmc_in        => m_request,
-      tmc_out       => m_response
+      tmc_in        => m_response,
+      tmc_out       => m_request
       );
 
   ram0 : ENTITY block_ram
@@ -74,10 +80,13 @@ BEGIN
 
   memcmd : PROCESS(m_request)
   BEGIN
-    ram_we <= '0';
+ 
     IF m_request.cmd = mwrite THEN
       ram_we <= m_request.start;
+      else
+         ram_we <= '0';
     END IF;
+    
   END PROCESS;
 
 -- things come out of memory
@@ -93,17 +102,17 @@ BEGIN
     ram_done_i <= '0';                  -- done bit is usually 0
 
     fake_it <= 0;
-    IF ram_we = '1' THEN
+    IF m_request.start = '1' THEN
       fake_it <= 1;
     END IF;
     IF fake_it = 1 THEN
       fake_it <= 2;
     END IF;
-    IF fake_it = 3 THEN
-      fake_it <= 4;
+    IF fake_it = 2 THEN
+      fake_it <= 3;
     END IF;
 
-    IF fake_it = 4 THEN
+    IF fake_it = 3 THEN
       ram_done_i <= '1';                -- after waiting, done bit becomes 1
     END IF;
     
@@ -159,6 +168,9 @@ BEGIN
   END PROCESS;
 
   tb_fsm0_reg : PROCESS
+    -- write to file variables
+    VARIABLE outline : LINE;
+    VARIABLE out_int : INTEGER;
   BEGIN
     WAIT UNTIL clk'event AND clk = '1';
 
@@ -178,6 +190,12 @@ BEGIN
           dsa_req.start      <= '1';
           -- update text extracting info
           test_index         <= test_index + 1;
+        WHEN check =>
+          -- write to file
+         -- write(outline, (test_index-1));
+          out_int := to_integer(UNSIGNED(myPtr));
+          write(outline, out_int);
+          writeline(fout, outline);
         WHEN OTHERS => NULL;
       END CASE;
     END IF;  -- if reset stuff    
