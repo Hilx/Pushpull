@@ -68,15 +68,23 @@ BEGIN
   -- Memory Interaction ------------------
   -- -------------------------------------
   -- things go into memory
-  ram_we           <= m_request.start;
-  ram_addr         <= m_request.addr;
-  ram_wdata        <= m_request.wdata;
-  -- things come out of memory
+  ram_addr  <= m_request.addr;
+  ram_wdata <= m_request.wdata;
+
+  memcmd : PROCESS(m_request)
+  BEGIN
+    ram_we <= 0;
+    IF m_request = mwrite THEN
+      ram_we <= m_request.start;
+    END IF;
+  END PROCESS;
+
+-- things come out of memory
   m_response.rdata <= ram_rdata;
   m_response.done  <= ram_done_i;
 
-  -- we also need a done for m_response.done
-  -- let's fake one!
+-- we also need a done for m_response.done
+-- let's fake one!
   memdone : PROCESS
   BEGIN
     WAIT UNTIL clk'event AND clk = '1';
@@ -100,9 +108,9 @@ BEGIN
     
   END PROCESS;
 
-  -- -------------------------------------
-  -- ---------- Clock Generation ---------
-  -- -------------------------------------  
+-- -------------------------------------
+-- ---------- Clock Generation ---------
+-- -------------------------------------  
   p1_clkgen : PROCESS
   BEGIN
     clk <= '0';
@@ -111,9 +119,9 @@ BEGIN
     WAIT FOR 50 ns;
   END PROCESS p1_clkgen;
 
-  -- -------------------------------------
-  -- TB FSM: init and send commands ------
-  -- -------------------------------------
+-- -------------------------------------
+-- TB FSM: init and send commands ------
+-- -------------------------------------
   tb_fsm0_comb : PROCESS(tb_state,
                          mmu_init_done, dsa_response,
                          test_index
