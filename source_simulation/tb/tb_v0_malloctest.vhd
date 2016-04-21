@@ -191,8 +191,6 @@ BEGIN
           -- update text extracting info
           test_index         <= test_index + 1;
         WHEN check =>
-          -- write to file
-         -- write(outline, (test_index-1));
           out_int := to_integer(UNSIGNED(myPtr));
           write(outline, out_int);
           writeline(fout, outline);
