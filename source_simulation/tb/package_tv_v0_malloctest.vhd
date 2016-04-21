@@ -5,6 +5,9 @@ USE ieee.numeric_std.ALL;
 PACKAGE tb_pack_v0 IS
   ALIAS slv IS STD_LOGIC_VECTOR;
 
+  -- configuration
+  CONSTANT MAX_BRAM_ADDR : INTEGER := 127;
+  
   TYPE tb_fsm_v0_type IS (idle,
                           init, initing,
                           ready, command, busy, check,
