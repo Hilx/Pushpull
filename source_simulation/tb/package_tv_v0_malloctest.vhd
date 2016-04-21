@@ -10,10 +10,6 @@ PACKAGE tb_pack_v0 IS
                           ready, command, busy, check,
                           donestate);
 
-  -- -------------------------------------
-  -- ----- TESTING INPUT -----------------
-  -- -------------------------------------  
-  
   TYPE tb_data_type IS RECORD
     index : INTEGER;
     req   : slv(31 DOWNTO 0);
@@ -22,6 +18,7 @@ PACKAGE tb_pack_v0 IS
 
   TYPE tb_data_array_type IS ARRAY (NATURAL RANGE <>) OF tb_data_type;
 
+  -- test inputs
   CONSTANT myTest : tb_data_array_type := (
     (0, x"00000000", '0'),
     (1, x"00000000", '0'),
