@@ -23,12 +23,10 @@ ENTITY dsl_wrapper IS
 END ENTITY dsl_wrapper;
 
 ARCHITECTURE syn_dsl_wrapper OF dsl_wrapper IS
-  
-  SIGNAL dsl_state, dsl_nstate   : dsl_overall_control_state_type;
-  SIGNAL start_bit, done_bit     : dsl_internal_control_type;
-  SIGNAL init_state, init_nstate : hash_init_state_type;
-  SIGNAL entry_count             : slv(31 DOWNTO 0);
-  SIGNAL mem_addr                : slv(31 DOWNTO 0);
+  SIGNAL dsl_state, dsl_nstate : dsl_overall_control_state_type;
+  SIGNAL start_bit, done_bit   : dsl_internal_control_type;
+
+  SIGNAL mcin_init_hash, mcout_init_hash : mem_control_type;
   
 BEGIN
   -- data structure logic
@@ -86,77 +84,55 @@ BEGIN
   END PROCESS;
 
   -- ---------------------------------------------
-  -- ---------- hash table initialisation --------
-  -- -------- write nullPtr as hash entries ------
+  -- ------------------ PORT MAP -----------------
   -- ---------------------------------------------
-  init_fsm_comb : PROCESS(start_bit, init_state, mcin,
-                          entry_count, total_entry)
-  BEGIN
-    init_nstate <= idle;
-    CASE init_state IS
-      WHEN idle =>
-        init_nstate <= idle;
-        IF start_bit.hash_init = '1' THEN
-          init_nstate <= wstart;
-        END IF;
-      WHEN wstart =>
-        init_nstate <= wwait;
-      WHEN wwait =>
-        init_nstate <= wwait;
-        IF mcin.done = '1' THEN
-          init_nstate <= compute;
-        END IF;
-      WHEN compute =>
-        init_nstate <= wwrite;
-        IF entry_count = total_entry THEN
-          init_nstate <= done;
-        END IF;
-      WHEN done =>
-        init_nstate <= idle;
-      WHEN OTHERS => NULL;
-    END CASE;
-  END PROCESS;
+  init0 : ENTITY dsl_init_hash
+    PORT MAP(
+      clk         => clk,
+      rst         => rst,
+      total_entry => total_entry,
+      start_b     => start_bit.init_hash,
+      done_b      => done_bit.init_hash,
+      mcin        => mcin_init_hash,
+      mcout       => mcout_init_hash
+      );
+  insert0 : ENTITY dsl_insert
+    PORT MAP(
+      clk       => clk,
+      rst       => rst,
+      key       => dsl_in.key,
+      data      => dsl_in.data,
+      start     => start_bit.insert,
+      done      => done_bit.insert,
+      alloc_in  => alloc_in_insert,
+      alloc_out => alloc_out_insert,
+      mcin      => mcin_insert,
+      mcout     => mcout_insert
+      );
+  dol0 : ENTITY dsl_delete_or_lookup IS
+    PORT(
+      clk       => clk,
+      rst       => rst,
+      cmd       => dsl_in.cmd,
+      key       => dsl_in.key,
+      start     => start_bit.dol,
+      done      => done_bit.dol,
+      alloc_in  => alloc_in_dol,
+      alloc_out => alloc_out_dol,
+      mcin      => mcin_dol,
+      mcout     => mcout_dol
+      );
+    de_all0 : ENTITY dsl_delete_all
+      PORT(
+        clk       => clk,
+        rst       => rst,
+        start     => start_bit.da,
+        done      => done_bit.da,
+        alloc_in  => alloc_in_da,
+        alloc_out => alloc_out_da,
+        mcin      => mcin_da,
+        mcout     => mcout_da
+        );
 
-  mcout.addr <= mem_addr;
-  init_fsm_reg : PROCESS
-  BEGIN
-    WAIT UNTIL clk'event AND clk = '1';
-    init_state         <= init_nstate;
-    mcout.start        <= '0';
-    done_bit.hash_init <= '0';
-    IF rst = CONST_RESET THEN
-      init_state <= idle;
-    ELSE
-      CASE init_state IS
-        WHEN idle =>
-          mem_addr    <= MEM_BASE;
-          mcout.wdata <= nullPtr;
-          mcout.cmd   <= mwrite;
-        WHEN wwrite =>
-          mcout.start <= '1';
-          node_count  <= slv(UNSIGNED(node_count) + 1);
-        WHEN compute =>
-          mem_addr <= slv(UNSIGNED(mem_addr) + ADDR_WORD_OFF_DEC);
-        WHEN done =>
-          done_bit.hash_init <= '1';
-        WHEN OTHERS => NULL;
-      END CASE;
-    END IF;
-  END PROCESS;
 
-  -- ---------------------------------------------
-  -- ----------------- insert item ---------------
-  -- ---------------------------------------------
-  -- ---------------------------------------------
-  insert_fsm_comb : PROCESS(start_bit, mcin)
-  BEGIN
-
-  END PROCESS;
-  insert_fsm_reg : PROCESS
-  BEGIN
-    WAIT UNTIL clk'event AND clk = '1';
-
-  END PROCESS;
-  
-  
-END ARCHITECTURE syn_dsl_wrapper;
+  END ARCHITECTURE syn_dsl_wrapper;

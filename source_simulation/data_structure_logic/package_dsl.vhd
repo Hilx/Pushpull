@@ -29,5 +29,6 @@ PACKAGE dsl_pack IS
   END RECORD;
 
   TYPE hash_init_state_type IS (idle, wstart, wwait, compute, done);
+  TYPE insert_state_type
 
 END PACKAGE;
