@@ -107,11 +107,11 @@ BEGIN
     IF fake_it = 1 THEN
       fake_it <= 2;
     END IF;
-    IF fake_it = 3 THEN
-      fake_it <= 4;
+    IF fake_it = 2 THEN
+      fake_it <= 3;
     END IF;
 
-    IF fake_it = 4 THEN
+    IF fake_it = 3 THEN
       ram_done_i <= '1';                -- after waiting, done bit becomes 1
     END IF;
     
