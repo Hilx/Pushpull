@@ -7,12 +7,16 @@ PACKAGE config_pack IS
 
   CONSTANT CONST_RESET : STD_LOGIC := '1';  -- active high 1, active low 0
 
-  -- CONFIGURATION CONSTANTS
-  CONSTANT MEM_BASE       : slv(31 DOWNTO 0) := x"00000000";
-  CONSTANT MEM_BLOCK_SIZE : slv(31 DOWNTO 0) := x"00000002";  -- 16B
-  CONSTANT LIST_LENGTH    : INTEGER          := 40;  -- total mem = 16384*16B
+  CONSTANT nullPtr : slv(31 DOWNTO 0) := (OTHERS => x"FFFF0000");
 
-  -- memory controller related signals
+                                        -- CONFIGURATION CONSTANTS
+  CONSTANT MEM_BASE          : slv(31 DOWNTO 0) := x"10000000";
+  CONSTANT MEM_BLOCK_SIZE    : slv(31 DOWNTO 0) := x"00000010";  -- 16B
+  CONSTANT LIST_LENGTH       : INTEGER          := 16384;  -- total mem = 16384*16B
+  CONSTANT ADDR_WORD_OFF_BIN : INTEGER          := 0;  --0 for bram, 2 for ddr
+  CONSTANT ADDR_WORD_OFF_DEC : UNSIGNED         := x"00000001";  -- 1 for bram, 4 for ddr
+
+                                        -- memory controller related signals
 
   TYPE mem_cmd_type IS (mwrite, mread);
 

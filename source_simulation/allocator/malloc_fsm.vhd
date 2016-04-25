@@ -6,22 +6,24 @@ USE work.malloc_pack.ALL;               -- memory management package
 
 ENTITY mmu IS  -- memory management unit a.k.a memory allocator
   PORT(
-    clk      : IN  STD_LOGIC;
-    rst      : IN  STD_LOGIC;
-    argu     : IN  allocator_com_type;
-    retu     : OUT allocator_com_type;
-    mcin     : IN  mem_control_type;
-    mcout    : OUT mem_control_type;
-    mmu_init : IN  mmu_init_type
+    clk                : IN  STD_LOGIC;
+    rst                : IN  STD_LOGIC;
+    total_entry_offset : IN  STD_LOGIC_VECTOR;
+    argu               : IN  allocator_com_type;
+    retu               : OUT allocator_com_type;
+    mcin               : IN  mem_control_type;
+    mcout              : OUT mem_control_type;
+    mmu_init           : IN  mmu_init_type
     );
 END ENTITY mmu;
 
 ARCHITECTURE syn_mmu OF mmu IS
+  slv uns IS UNSIGNED;
   SIGNAL hdList                : slv(31 DOWNTO 0);
   SIGNAL mmu_state, mmu_nstate : allocator_state_type;
 BEGIN
   
-  mmu_fsm_comb : PROCESS(mmu_state, argu, mcin, mmu_init)
+  mmu_fsm_comb : PROCESS(mmu_state, argu, mcin, mmu_init, hdList)
   BEGIN
     CASE mmu_state IS
       WHEN mmu_state_idle =>
@@ -31,6 +33,9 @@ BEGIN
         END IF;
         IF argu.start = '1' THEN        -- if there is a new request
           mmu_nstate <= mmu_state_malloc;    -- if malloc
+          IF hdList = nullPtr THEN      -- out of memory
+            mmu_nstate <= mmu_state_done;
+          END IF;
           IF argu.cmd = free THEN       -- if free
             mmu_nstate <= mmu_state_free;
           END IF;
@@ -96,7 +101,7 @@ BEGIN
             hdList <= argu.ptr;
           END IF;
         WHEN mmu_state_init =>          -- assign initial hdList address
-          hdList <= MEM_BASE;
+          hdList <= slv(uns(MEM_BASE)+uns(total_entry_offset));
         WHEN OTHERS => NULL;
       END CASE;
     END IF;  -- reset or not

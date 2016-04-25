@@ -12,6 +12,7 @@ ENTITY dsa_top_wrapper IS
     PTR_OUT       : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);  -- for testing malloc
     clk           : IN  STD_LOGIC;
     rst           : IN  STD_LOGIC;
+    total_entry   : IN  STD_LOGIC_VECTOR;
     mmu_init_bit  : IN  STD_LOGIC;      -- allocator initialisation command
     mmu_init_done : OUT STD_LOGIC;
     -- dsl communication
@@ -39,8 +40,15 @@ ARCHITECTURE syn_dsa_top_wrapper OF dsa_top_wrapper IS
 
   -- FOR TESTING MALLOC NOW, translator signals
   SIGNAL tra_state, tra_nstate : tra_state_type;
-  
+
+  SIGNAL total_entry_offset : STD_LOGIC_VECTOR;
 BEGIN
+  -- -------------------------------------
+  -- ---- total entry info ---------------
+  -- -------------------------------------
+  total_entry_offset <= total_entry SLL ADDR_WORD_OFF_BIN;
+
+
   -- -------------------------------------
   -- ----- Connections and Port Maps -----
   -- -------------------------------------  
@@ -48,31 +56,33 @@ BEGIN
   mmu_init_done <= mmu_init_done_i;
   alloc0 : ENTITY malloc_wrapper
     PORT MAP(
-      clk           => clk,
-      rst           => rst,
-      mmu_init_bit  => mmu_init_bit,
-      mmu_init_done => mmu_init_done_i,
+      clk                => clk,
+      rst                => rst,
+      total_entry_offset => total_entry_offset,
+      mmu_init_bit       => mmu_init_bit,
+      mmu_init_done      => mmu_init_done_i,
       -- Interval/DS communication
-      argu          => alloc_cmd,
-      retu          => alloc_resp,
+      argu               => alloc_cmd,
+      retu               => alloc_resp,
       -- External/Memory communication
-      memcon_in     => alloc_mc_resp,
-      memcon_out    => alloc_mc_cmd
+      memcon_in          => alloc_mc_resp,
+      memcon_out         => alloc_mc_cmd
       );
 
   dsl0 : ENTITY dsl_wrapper
     PORT MAP(
-      clk       => clk,
-      rst       => rst,
+      clk         => clk,
+      rst         => rst,
+      total_entry => total_entry,
       -- dsl communication
-      dsl_in    => dsl_request,
-      dsl_out   => dsl_response,
+      dsl_in      => dsl_request,
+      dsl_out     => dsl_response,
       -- allocator communication
-      alloc_in  => alloc_resp,
-      alloc_out => alloc_cmd,
+      alloc_in    => alloc_resp,
+      alloc_out   => alloc_cmd,
       -- memory controller communication
-      mcin      => dsl_mc_resp,
-      mcout     => dsl_mc_cmd
+      mcin        => dsl_mc_resp,
+      mcout       => dsl_mc_cmd
       );
 
   -- -------------------------------------

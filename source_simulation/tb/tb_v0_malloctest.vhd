@@ -1,8 +1,7 @@
 LIBRARY ieee;
 USE ieee.std_logic_1164.ALL;
 USE ieee.numeric_std.ALL;
-USE std.textio.ALL; -- write to file
-USE ieee.std_logic_textio.ALL;          -- write to file 
+USE ieee.std_logic_textio.ALL;          -- write to files 
 USE work.ALL;
 USE work.config_pack.ALL;
 USE work.dsa_top_pack.ALL;
@@ -29,6 +28,7 @@ ARCHITECTURE behav_tb_v0 OF tb_v0 IS
   SIGNAL dsa_response  : dsl_com_out_type;  -- feedback from dsa block
   SIGNAL m_request     : mem_control_type;  -- memory control from dsa
   SIGNAL m_response    : mem_control_type;  -- memory control to dsa
+  SIGNAL total_entry   : STD_LOGIC_VECTOR;
   -- memory signals
   SIGNAL ram_we        : STD_LOGIC;     -- write enable
   SIGNAL ram_addr      : slv(31 DOWNTO 0);
@@ -46,20 +46,22 @@ ARCHITECTURE behav_tb_v0 OF tb_v0 IS
 BEGIN
   -- -------------------------------------
   -- ----- Connections and Port Maps -----
-  -- -------------------------------------  
+  -- -------------------------------------
+  total_entry <= slv(UNSIGNED(32));
   dsa0 : ENTITY dsa_top_wrapper
     PORT MAP(
       PTR_OUT       => myPtr,
       clk           => clk,
       rst           => rst,
+      total_entry   => total_entry;
       mmu_init_bit  => mmu_init_bit,
       mmu_init_done => mmu_init_done,
       -- dsl communication
       request       => dsa_req,
       response      => dsa_response,
       -- memory controller communciation
-      tmc_in        => m_response,
-      tmc_out       => m_request
+      tmc_in        => m_request,
+      tmc_out       => m_response
       );
 
   ram0 : ENTITY block_ram
@@ -80,13 +82,10 @@ BEGIN
 
   memcmd : PROCESS(m_request)
   BEGIN
- 
+    ram_we <= '0';
     IF m_request.cmd = mwrite THEN
       ram_we <= m_request.start;
-      else
-         ram_we <= '0';
     END IF;
-    
   END PROCESS;
 
 -- things come out of memory
@@ -102,17 +101,17 @@ BEGIN
     ram_done_i <= '0';                  -- done bit is usually 0
 
     fake_it <= 0;
-    IF m_request.start = '1' THEN
+    IF ram_we = '1' THEN
       fake_it <= 1;
     END IF;
     IF fake_it = 1 THEN
       fake_it <= 2;
     END IF;
-    IF fake_it = 2 THEN
-      fake_it <= 3;
+    IF fake_it = 3 THEN
+      fake_it <= 4;
     END IF;
 
-    IF fake_it = 3 THEN
+    IF fake_it = 4 THEN
       ram_done_i <= '1';                -- after waiting, done bit becomes 1
     END IF;
     
@@ -191,7 +190,9 @@ BEGIN
           -- update text extracting info
           test_index         <= test_index + 1;
         WHEN check =>
-          out_int := to_integer(UNSIGNED(myPtr));
+          -- write to file
+          write(outline, (test_index-1));
+          out_int := to_integer(UNSIGNED(dsa_response.ptr));
           write(outline, out_int);
           writeline(fout, outline);
         WHEN OTHERS => NULL;

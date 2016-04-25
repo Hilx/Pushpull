@@ -6,16 +6,18 @@ USE work.malloc_pack.ALL;
 
 ENTITY mmu_init_block IS
   PORT(
-    clk   : IN  STD_LOGIC;
-    rst   : IN  STD_LOGIC;
-    start : IN  STD_LOGIC;
-    done  : OUT STD_LOGIC;
-    mcin  : IN  mem_control_type;
-    mcout : OUT mem_control_type
+    clk                : IN  STD_LOGIC;
+    rst                : IN  STD_LOGIC;
+    total_entry_offset : IN  STD_LOGIC_VECTOR;
+    start              : IN  STD_LOGIC;
+    done               : OUT STD_LOGIC;
+    mcin               : IN  mem_control_type;
+    mcout              : OUT mem_control_type
     );
 END ENTITY mmu_init_block;
 
 ARCHITECTURE syn_mmu_init OF mmu_init_block IS
+  ALIAS uns IS UNSIGNED;
   SIGNAL currentNodePtr          : slv(31 DOWNTO 0);
   SIGNAL init_state, init_nstate : initialisation_state_type;
   SIGNAL node_count              : INTEGER RANGE 0 TO LIST_LENGTH;
@@ -64,18 +66,21 @@ BEGIN
       
       CASE init_state IS
         WHEN init_state_idle =>
-          currentNodePtr <= MEM_BASE;
+          currentNodePtr <= slv(uns(MEM_BASE) + uns(total_entry_offset));
           node_count     <= 0;
         WHEN init_state_compute =>
-          nextNodePtr    := slv(UNSIGNED(currentNodePtr) + UNSIGNED(MEM_BLOCK_SIZE));
-          -- mem conrtol code
+          nextNodePtr    := slv(uns(currentNodePtr) + uns(MEM_BLOCK_SIZE));
+                                        -- mem conrtol code
           mcout.addr     <= currentNodePtr;
           mcout.wdata    <= nextNodePtr;
           mcout.cmd      <= mwrite;
-          -- update currentNodePtr
+                                        -- update currentNodePtr
           currentNodePtr <= nextNodePtr;
-          -- increment node count
-          node_count     <= node_count + 1;
+          IF node_count = (LIST_LENGTH - 1) THEN
+            mcout.wdata <= nullPtr;
+          END IF;
+                                        -- increment node count
+          node_count <= node_count + 1;
         WHEN init_state_write =>
           mcout.start <= '1';
         WHEN init_state_done =>
