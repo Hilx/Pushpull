@@ -29,6 +29,29 @@ PACKAGE dsl_pack IS
   END RECORD;
 
   TYPE hash_init_state_type IS (idle, wstart, wwait, compute, done);
-  TYPE insert_state_type
+
+  TYPE dsl_lookup_result_type IS RECORD
+    data  : slv(31 DOWNTO 0);
+    found : STD_LOGIC;                  -- 0, not found; 1, found
+  END RECORD;
+
+  TYPE dsl_ild_state_type IS (idle,
+                              hashing,
+                              rnode_start, rnode_wait, rnode_valid,
+                              compare,
+                              isdone,
+                              insertion,
+                              deletion
+                              );
+
+  TYPE node_access_control_type IS RECORD
+    cmd     : STD_LOGIC;
+    ptr     : slv(31 DOWNTO 0);
+    key     : slv(31 DOWNTO 0);
+    data    : slv(31 DOWNTO 0);
+    nextPtr : slv(31 DOWNTO 0);
+  END RECORD;
+
+  
 
 END PACKAGE;

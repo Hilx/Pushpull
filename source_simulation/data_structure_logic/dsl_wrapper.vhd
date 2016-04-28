@@ -27,7 +27,9 @@ ARCHITECTURE syn_dsl_wrapper OF dsl_wrapper IS
   SIGNAL start_bit, done_bit   : dsl_internal_control_type;
 
   SIGNAL mcin_init_hash, mcout_init_hash : mem_control_type;
-  
+
+  SIGNAL lookup_result : dsl_lookup_result_type;
+
 BEGIN
   -- data structure logic
   dsl_fsm_comb : PROCESS(dsl_state, dsl_in, done_bit);
@@ -84,7 +86,7 @@ BEGIN
   END PROCESS;
 
   -- ---------------------------------------------
-  -- ------------------ PORT MAP -----------------
+  -- ------------------ PORT MAPS ----------------
   -- ---------------------------------------------
   init0 : ENTITY dsl_init_hash
     PORT MAP(
@@ -96,43 +98,31 @@ BEGIN
       mcin        => mcin_init_hash,
       mcout       => mcout_init_hash
       );
-  insert0 : ENTITY dsl_insert
+
+  de_all0 : ENTITY dsl_delete_all
     PORT MAP(
       clk       => clk,
       rst       => rst,
-      key       => dsl_in.key,
-      data      => dsl_in.data,
-      start     => start_bit.insert,
-      done      => done_bit.insert,
-      alloc_in  => alloc_in_insert,
-      alloc_out => alloc_out_insert,
-      mcin      => mcin_insert,
-      mcout     => mcout_insert
+      start     => start_bit.da,
+      done      => done_bit.da,
+      alloc_in  => alloc_in_da,
+      alloc_out => alloc_out_da,
+      mcin      => mcin_da,
+      mcout     => mcout_da
       );
-  dol0 : ENTITY dsl_delete_or_lookup IS
-    PORT(
-      clk       => clk,
-      rst       => rst,
-      cmd       => dsl_in.cmd,
-      key       => dsl_in.key,
-      start     => start_bit.dol,
-      done      => done_bit.dol,
-      alloc_in  => alloc_in_dol,
-      alloc_out => alloc_out_dol,
-      mcin      => mcin_dol,
-      mcout     => mcout_dol
+
+  ild0 : ENTITY dsl_ild
+    PORT MAP(
+      clk           => clk,
+      rst           => rst,
+      start         => start_bit.ild,
+      cmd           => dsl_in.cmd,
+      done          => done_bit.ild,
+      lookup_result => lookup_result,
+      alloc_in      => alloc_in_ild,
+      alloc_out     => alloc_out_ild,
+      mcin          => mcin_ild,
+      mcout         => cout_ild
       );
-    de_all0 : ENTITY dsl_delete_all
-      PORT(
-        clk       => clk,
-        rst       => rst,
-        start     => start_bit.da,
-        done      => done_bit.da,
-        alloc_in  => alloc_in_da,
-        alloc_out => alloc_out_da,
-        mcin      => mcin_da,
-        mcout     => mcout_da
-        );
 
-
-  END ARCHITECTURE syn_dsl_wrapper;
+END ARCHITECTURE syn_dsl_wrapper;
