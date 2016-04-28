@@ -15,8 +15,8 @@ ENTITY dsl_ild IS
     done          : OUT STD_LOGIC;
     lookup_result : OUT dsl_lookup_result_type;  -- data and if data is valid
     -- node access
-    node_request  : OUT node_access_control_type;
-    node_response : IN  node_access_control_type;
+    node_request  : OUT hash_node_access_control_type;
+    node_response : IN  hashnode_access_control_type;
     --
     alloc_in      : IN  allocator_com_type;
     alloc_out     : OUT allocator_com_type;
@@ -28,6 +28,9 @@ END ENTITY dsl_ild;
 
 ARCHITECTURE syn_dsl_ild OF dsl_ild IS
   SIGNAL ild_state, ild_nstate : dsl_ild_state_type;
+  SIGNAL hdBucket              : slv(31 DOWNTO 0);
+  SIGNAL nodeIN                : hash_node_type;
+  SIGNAL nodePrev              : hash_node_type;
 BEGIN
   ild_fsm_comb : PROCESS(ild_state, start, cmd, mcin, alloc_in)
   BEGIN
@@ -57,19 +60,19 @@ BEGIN
         ild_nstate <= rnode_start;      -- if smaller
         -- other cases
         IF cmd = lookup THEN
-          IF equal OR large OR nullptr THEN
+          IF key = nodeIn.key OR key > nodeIn.key OR nodeIn.nextPtr = nullPtr THEN
             ild_nstate <= isdone;
           END IF;
         ELSIF cmd = insert THEN
-          IF equal THEN
+          IF key = nodeIn.key THEN
             ild_nstate <= isdone;
-          ELSIF larger OR nullptr THEN
+          ELSIF key > nodeIn.key OR node_in.nextPtr = nullPtr THEN
             ild_nstate <= insertion;
           END IF;
         ELSIF cmd = delete THEN
-          IF larger OR nullptr THEN
+          IF key > nodeIn.key OR node_in.nextPtr = nullPtr THEN
             ild_nstate <= isdone;
-          ELSIF equal THEN
+          ELSIF key = nodeIn.key THEN
             ild_nstate <= deletion;
           END IF;
         END IF;
@@ -98,12 +101,27 @@ BEGIN
     ELSE
       CASE ild_state IS
         WHEN hashing =>
-        -- how to hash?
+          -- how to hash?
+          -- for now
+          hdBucket <= (OTHERS => '0');  -- just for now
         WHEN isdone =>
           done <= '1';
+          CASE cmd IS
+            WHEN lookup =>
+              lookup_result.data  <= nodeIn.data;
+              lookup_result.found <= '0';
+              IF key = nodeIn.key THEN
+                lookup_result.found <= '1';
+              END IF;
+            WHEN OTHERS => NULL;
+          END CASE;
         WHEN rnode_start =>
-          mcout.start <= '1';
+          node_request.cmd = rnode;
+          node_request.ptr <= hdBucket;
         WHEN rnode_valid =>
+          nodeIn.key     <= node_response.key;
+          nodeIn.data    <= node_response.data;
+          nodeIn.nextPtr <= node_response.nextPtr;
         WHEN OTHERS => NULL;
       END CASE;
     END IF;  -- if reset

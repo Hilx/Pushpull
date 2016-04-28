@@ -44,8 +44,16 @@ PACKAGE dsl_pack IS
                               deletion
                               );
 
-  TYPE node_access_control_type IS RECORD
+  TYPE node_req_cmd_type IS(rnode, wnode);
+  TYPE hash_node_access_control_type IS RECORD
     cmd     : STD_LOGIC;
+    ptr     : slv(31 DOWNTO 0);
+    key     : slv(31 DOWNTO 0);
+    data    : slv(31 DOWNTO 0);
+    nextPtr : slv(31 DOWNTO 0);
+  END RECORD;
+
+  TYPE hash_node_type IS RECORD
     ptr     : slv(31 DOWNTO 0);
     key     : slv(31 DOWNTO 0);
     data    : slv(31 DOWNTO 0);
