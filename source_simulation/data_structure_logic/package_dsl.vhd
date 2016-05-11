@@ -21,9 +21,7 @@ PACKAGE dsl_pack IS
 
   TYPE dsl_overall_control_state_type IS (idle, start, busy, done);
   TYPE dsl_internal_control_type IS RECORD
-    insert     : STD_LOGIC;
-    delete     : STD_LOGIC;
-    lookup     : STD_LOGIC;
+    ild        : STD_LOGIC;
     delete_all : STD_LOGIC;
     init_hash  : STD_LOGIC;
   END RECORD;

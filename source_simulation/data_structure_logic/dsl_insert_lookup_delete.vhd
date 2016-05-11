@@ -16,7 +16,7 @@ ENTITY dsl_ild IS
     lookup_result : OUT dsl_lookup_result_type;  -- data and if data is valid
     -- node access
     node_request  : OUT hash_node_access_control_type;
-    node_response : IN  hashnode_access_control_type;
+    node_response : IN  hash_node_access_control_type;
     --
     alloc_in      : IN  allocator_com_type;
     alloc_out     : OUT allocator_com_type;
