@@ -60,6 +60,23 @@ PACKAGE dsl_pack IS
     nextPtr : slv(31 DOWNTO 0);
   END RECORD;
 
-  
+  TYPE node_access_cmd_type IS (nread, nwrite);
+
+  TYPE node_access_comm_type IS RECORD
+    cmd   : node_access_cmd_type;
+    ptr   : slv(31 DOWNTO 0);
+    node  : hash_node_type;
+    start : STD_LOGIC;
+    done  : STD_LOGIC;
+  END RECORD;
+
+  TYPE node_access_state_type IS(idle,
+                                 r0start, r0wait,
+                                 r1start, r1wait,
+                                 r2start, r2wait,
+                                 w0start, w0wait,
+                                 w1start, w1wait,
+                                 w2start, w2wait,
+                                 done);
 
 END PACKAGE;
