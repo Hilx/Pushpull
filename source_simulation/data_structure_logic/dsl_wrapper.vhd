@@ -184,6 +184,8 @@ BEGIN
       start         => start_bit.ild,
       cmd           => dsl_in.cmd,
       done          => done_bit.ild,
+      key           => dsl_in.key,
+      data          => dsl_out.data,
       lookup_result => lookup_result,
       node_request  => node_access_request_wire,
       node_response => node_access_response_wire,

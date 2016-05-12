@@ -13,6 +13,8 @@ ENTITY dsl_ild IS
     start         : IN  STD_LOGIC;
     cmd           : IN  dsl_com_type;
     done          : OUT STD_LOGIC;
+    key           : IN  STD_LOGIC_VECTOR(31 DOWNTO 0);
+    data          : IN  STD_LOGIC_VECTOR(31 DOWNTO 0);
     lookup_result : OUT dsl_lookup_result_type;  -- data and if data is valid
     -- node access
     node_request  : OUT hash_node_access_control_type;
@@ -103,6 +105,9 @@ BEGIN
         WHEN hashing =>
           -- how to hash?
           -- for now
+          hash_result = key();
+
+
           hdBucket <= (OTHERS => '0');  -- just for now
         WHEN isdone =>
           done <= '1';
