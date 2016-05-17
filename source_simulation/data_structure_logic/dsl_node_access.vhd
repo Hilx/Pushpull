@@ -4,7 +4,7 @@ LIBRARY ieee;
 USE ieee.std_logic_1164.ALL;
 USE ieee.numeric_std.ALL;
 USE work.config_pack.ALL;
-USE dsl_pack.ALL;
+USE work.dsl_pack.ALL;
 
 ENTITY dsl_node_access IS
   PORT(
@@ -14,7 +14,7 @@ ENTITY dsl_node_access IS
     response : OUT node_access_comm_type;
     mcin     : IN  mem_control_type;
     mcout    : OUT mem_control_type
-    )
+    );
 END ENTITY;
 
 ARCHITECTURE syn_dsl_node_access OF dsl_node_access IS
@@ -87,14 +87,14 @@ BEGIN
                         response.node.key <= mcin.rdata;
 
         -- write node
-        WHEN w1start => mcout.cmd <= mwrite;
+        WHEN w0start => mcout.cmd <= mwrite;
                         mcout.start <= '1';
                         mcout.addr  <= request.ptr;
                         mcout.wdata <= request.node.nextPtr;
-        WHEN w2start => mcout.start <= '1';
+        WHEN w1start => mcout.start <= '1';
                         mcout.addr  <= slv(UNSIGNED(request.ptr) + KEY_OFFSET);
                         mcout.wdata <= request.node.key;
-        WHEN w3start => mcout.start <= '1';
+        WHEN w2start => mcout.start <= '1';
                         mcout.addr  <= slv(UNSIGNED(request.ptr)+ DATA_OFFSET);
                         mcout.wdata <= request.node.data;
 

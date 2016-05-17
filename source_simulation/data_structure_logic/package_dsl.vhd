@@ -26,7 +26,7 @@ PACKAGE dsl_pack IS
     init_hash  : STD_LOGIC;
   END RECORD;
 
-  TYPE hash_init_state_type IS (idle, wstart, wwait, compute, done);
+  TYPE hash_init_state_type IS (idle, wstart, wwrite, wwait, compute, done);
 
   TYPE dsl_lookup_result_type IS RECORD
     data  : slv(31 DOWNTO 0);
@@ -45,14 +45,14 @@ PACKAGE dsl_pack IS
                               del_nupdate_wait, del_nentry_wait
                               );
 
-  TYPE node_req_cmd_type IS(rnode, wnode);
-  TYPE hash_node_access_control_type IS RECORD
-    cmd     : STD_LOGIC;
-    ptr     : slv(31 DOWNTO 0);
-    key     : slv(31 DOWNTO 0);
-    data    : slv(31 DOWNTO 0);
-    nextPtr : slv(31 DOWNTO 0);
-  END RECORD;
+  --TYPE node_req_cmd_type IS(rnode, wnode);
+  -- TYPE hash_node_access_control_type IS RECORD
+  --   cmd     : STD_LOGIC;
+  --   ptr     : slv(31 DOWNTO 0);
+  --   key     : slv(31 DOWNTO 0);
+  --   data    : slv(31 DOWNTO 0);
+  --   nextPtr : slv(31 DOWNTO 0);
+  -- END RECORD;
 
   TYPE hash_node_type IS RECORD
     ptr     : slv(31 DOWNTO 0);
@@ -61,7 +61,7 @@ PACKAGE dsl_pack IS
     nextPtr : slv(31 DOWNTO 0);
   END RECORD;
 
-  TYPE node_access_cmd_type IS (nread, nwrite);
+  TYPE node_access_cmd_type IS (rnode, wnode);
 
   TYPE node_access_comm_type IS RECORD
     cmd   : node_access_cmd_type;

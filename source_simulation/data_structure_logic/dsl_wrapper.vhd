@@ -1,6 +1,7 @@
 LIBRARY ieee;
 USE ieee.std_logic_1164.ALL;
 USE ieee.numeric_std.ALL;
+USE work.ALL;
 USE work.config_pack.ALL;
 USE work.malloc_pack.ALL;
 USE work.dsl_pack.ALL;
@@ -26,7 +27,7 @@ ARCHITECTURE syn_dsl_wrapper OF dsl_wrapper IS
   SIGNAL dsl_state, dsl_nstate : dsl_overall_control_state_type;
   SIGNAL start_bit, done_bit   : dsl_internal_control_type;
 
-  SIGNAL mcin_init_hash, mcout_init_hash : mem_control_type;
+
 
   SIGNAL lookup_result : dsl_lookup_result_type;
 
@@ -43,7 +44,7 @@ ARCHITECTURE syn_dsl_wrapper OF dsl_wrapper IS
   SIGNAL mcin_init_hash, mcout_init_hash : mem_control_type;
 BEGIN
   -- data structure logic overall control
-  dsl_fsm_comb : PROCESS(dsl_state, dsl_in, done_bit);
+  dsl_fsm_comb : PROCESS(dsl_state, dsl_in, done_bit)
   BEGIN
     dsl_nstate <= idle;
     CASE dsl_state IS
@@ -56,9 +57,7 @@ BEGIN
         dsl_nstate <= busy;
       WHEN busy =>
         dsl_nstate <= busy;             -- default
-        IF done_bit.insert = '1' OR done_bit.delete = '1'
-          OR done_bit.lookup = '1' OR done_bit.delete_all = '1'
-          OR done_bit.init_hash THEN
+        IF done_bit.ild = '1' OR done_bit.delete_all = '1' OR done_bit.init_hash = '1' THEN
           dsl_nstate <= done;
         END IF;
       WHEN done =>
@@ -125,10 +124,10 @@ BEGIN
     END IF;
   END PROCESS;
 
-  mem_part : PROCESS(dsl_in, node_access_mem_bit, mcin)
+  mem_part : PROCESS(dsl_in, node_access_mem_bit, mcin, mcout_ild, mcout_naccess, mcout_da, mcout_init_hash)
   BEGIN
     -- defaults
-    cout           <= mcout_ild;
+    mcout          <= mcout_ild;
     mcin_ild       <= mcin;
     mcin_init_hash <= mcin;
     mcin_da        <= mcin;
@@ -154,7 +153,7 @@ BEGIN
   -- ---------------------------------------------
   -- ------------------ PORT MAPS ----------------
   -- ---------------------------------------------
-  init0 : ENTITY dsl_init_hash
+  inithash0 : ENTITY dsl_init_hash
     PORT MAP(
       clk         => clk,
       rst         => rst,
@@ -169,8 +168,8 @@ BEGIN
     PORT MAP(
       clk       => clk,
       rst       => rst,
-      start     => start_bit.da,
-      done      => done_bit.da,
+      start     => start_bit.delete_all,
+      done      => done_bit.delete_all,
       alloc_in  => alloc_in_da,
       alloc_out => alloc_out_da,
       mcin      => mcin_da,

@@ -7,7 +7,7 @@ PACKAGE config_pack IS
 
   CONSTANT CONST_RESET : STD_LOGIC := '1';  -- active high 1, active low 0
 
-  CONSTANT nullPtr : slv(31 DOWNTO 0) := (OTHERS => x"FFFF0000");
+  CONSTANT nullPtr : slv(31 DOWNTO 0) := x"FFFF0000";
 
   -- CONFIGURATION CONSTANTS -- pay attention to moving simulation to synthrun
   CONSTANT MEM_BASE          : slv(31 DOWNTO 0) := x"10000000";

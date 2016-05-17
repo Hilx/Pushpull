@@ -53,7 +53,7 @@ BEGIN
     PORT MAP(
       clk                => clk,
       rst                => rst,
-      total_entry_offset => total_entry_offsetm
+      total_entry_offset => total_entry_offset,
       start              => mmu_init_bit,
       done               => mmu_init.done,
       mcin               => init_input,

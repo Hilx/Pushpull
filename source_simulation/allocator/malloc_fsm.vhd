@@ -18,7 +18,7 @@ ENTITY mmu IS  -- memory management unit a.k.a memory allocator
 END ENTITY mmu;
 
 ARCHITECTURE syn_mmu OF mmu IS
-  slv uns IS UNSIGNED;
+  ALIAS uns IS UNSIGNED;
   SIGNAL hdList                : slv(31 DOWNTO 0);
   SIGNAL mmu_state, mmu_nstate : allocator_state_type;
 BEGIN

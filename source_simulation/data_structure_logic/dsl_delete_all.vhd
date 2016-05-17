@@ -18,7 +18,7 @@ ENTITY dsl_delete_all IS
     );
 END ENTITY dsl_delete_all;
 
-ARCHITECTURE syn_dsl_delete_or_lookup OF dsl_delete_or_lookup IS
+ARCHITECTURE syn_da OF dsl_delete_all IS
   ALIAS uns IS UNSIGNED;
   SIGNAL state, nstate             : da_state_type;
   SIGNAL hdBucket, nowPtr, nextPtr : slv(31 DOWNTO 0);
@@ -90,7 +90,7 @@ BEGIN
           mcout.cmd     <= mread;
         WHEN rbucket =>
           -- mem interaction
-          mcout.addr  <= slv(uns(MEM_BASE) + (entry_count SLL ADDR_WORD_OFF_BIN));
+          mcout.addr  <= slv(uns(MEM_BASE) + (to_unsigned(entry_count, 32) SLL ADDR_WORD_OFF_BIN));
           mcout.start <= '1';
           -- internal fsm control
           entry_count <= entry_count + 1;
@@ -109,9 +109,9 @@ BEGIN
           alloc_out.start <= '1';
           alloc_out.ptr   <= nowPtr;
         WHEN free_node_wait =>          -- IS IT SAFE TO UPDATE NOWPTR NOW?
-          nowPtr <= nextPtr; -- make sure pointer to be freed remain valid
+          nowPtr <= nextPtr;    -- make sure pointer to be freed remain valid
         WHEN isdone =>
-	  done <= '1';
+          done <= '1';
         WHEN OTHERS => NULL;
       END CASE;
 

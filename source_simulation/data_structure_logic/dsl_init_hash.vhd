@@ -7,12 +7,12 @@ USE work.dsl_pack.ALL;
 
 ENTITY dsl_init_hash IS
   PORT(
-    clk         : IN  STD_LOGIC,
-    rst         : IN  STD_LOGIC,
-    total_entry : IN  STD_LOGIC_VECTOR,
-    start_b     : IN  STD_LOGIC,
-    done_b      : OUT STD_LOGIC,
-    mcin        : IN  mem_control_type,
+    clk         : IN  STD_LOGIC;
+    rst         : IN  STD_LOGIC;
+    total_entry : IN  STD_LOGIC_VECTOR;
+    start_b     : IN  STD_LOGIC;
+    done_b      : OUT STD_LOGIC;
+    mcin        : IN  mem_control_type;
     mcout       : OUT mem_control_type
     );
 END ENTITY dsl_init_hash;
@@ -26,7 +26,7 @@ BEGIN
   -- ---------- hash table initialisation --------
   -- -------- write nullPtr as hash entries ------
   -- ---------------------------------------------
-  init_fsm_comb : PROCESS(start, init_state, mcin,
+  init_fsm_comb : PROCESS(start_b, init_state, mcin,
                           entry_count, total_entry)
   BEGIN
     init_nstate <= idle;
@@ -71,7 +71,7 @@ BEGIN
           mcout.cmd   <= mwrite;
         WHEN wwrite =>
           mcout.start <= '1';
-          node_count  <= slv(UNSIGNED(node_count) + 1);
+          entry_count <= slv(UNSIGNED(entry_count) + 1);
         WHEN compute =>
           mem_addr <= slv(UNSIGNED(mem_addr) + ADDR_WORD_OFF_DEC);
         WHEN done =>

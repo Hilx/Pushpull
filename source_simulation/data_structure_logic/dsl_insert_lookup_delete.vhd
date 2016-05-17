@@ -11,14 +11,14 @@ ENTITY dsl_ild IS
     rst           : IN  STD_LOGIC;
     --
     start         : IN  STD_LOGIC;
-    cmd           : IN  dsl_com_type;
+    cmd           : IN  dsl_cmd_type;
     done          : OUT STD_LOGIC;
     key           : IN  STD_LOGIC_VECTOR(31 DOWNTO 0);
     data          : IN  STD_LOGIC_VECTOR(31 DOWNTO 0);
     lookup_result : OUT dsl_lookup_result_type;  -- data and if data is valid
     -- node access
-    node_request  : OUT hash_node_access_control_type;
-    node_response : IN  hash_node_access_control_type;
+    node_request  : OUT node_access_comm_type;
+    node_response : IN  node_access_comm_type;
     --
     alloc_in      : IN  allocator_com_type;
     alloc_out     : OUT allocator_com_type;
@@ -30,13 +30,14 @@ END ENTITY dsl_ild;
 
 ARCHITECTURE syn_dsl_ild OF dsl_ild IS
   SIGNAL ild_state, ild_nstate : dsl_ild_state_type;
-  SIGNAL nodeIN                : hash_node_type;
+  SIGNAL nodeIn                : hash_node_type;
   SIGNAL nodePrev              : hash_node_type;
-  SIGNAL ptr_i                 : slv(31 DOWNTO 0);
+  SIGNAL ptr_i, entryPtr       : slv(31 DOWNTO 0);
   SIGNAL flag_first            : STD_LOGIC;
 BEGIN
   ild_fsm_comb : PROCESS(ild_state, start, cmd, mcin, alloc_in, node_response,
-                         entryPtr, nodePrev)
+                         entryPtr, nodePrev,
+                         key, nodeIn)
   BEGIN
     ild_nstate <= idle;                 -- default state
     CASE ild_state IS
@@ -79,11 +80,11 @@ BEGIN
         ELSIF cmd = insert THEN
           IF key = nodeIn.key THEN
             ild_nstate <= isdone;
-          ELSIF key > nodeIn.key OR node_in.nextPtr = nullPtr THEN
+          ELSIF key > nodeIn.key OR nodeIn.nextPtr = nullPtr THEN
             ild_nstate <= insertion;
           END IF;
         ELSIF cmd = delete THEN
-          IF key > nodeIn.key OR node_in.nextPtr = nullPtr THEN
+          IF key > nodeIn.key OR nodeIn.nextPtr = nullPtr THEN
             ild_nstate <= isdone;
           ELSIF key = nodeIn.key THEN
             ild_nstate <= deletion;
@@ -152,7 +153,7 @@ BEGIN
   END PROCESS;
 
   ild_fsm_reg : PROCESS
-    VARIABLE entry_index : UNSIGNED;
+    VARIABLE entry_index : UNSIGNED(31 DOWNTO 0);
   BEGIN
     WAIT UNTIL clk'event AND clk = '1';
 
@@ -167,12 +168,13 @@ BEGIN
       CASE ild_state IS
         WHEN hashing_start =>
           -- hashing
-          entry_index := UNSIGNED(key(HASH_MASKING-1 DOWNTO 0));
-          mcout.addr  <= slv(UNSIGNED(MEM_BASE) + (entry_index SLL ADDR_WORD_OFF_BIN));
-          enrtyPtr    <= slv(UNSIGNED(MEM_BASE) + (entry_index SLL ADDR_WORD_OFF_BIN));
-          mcout.cmd   <= mread;
-          mcout.start <= '1';
-          flag_first  <= '1';
+          entry_index(31 DOWNTO HASH_MASKING)  := (OTHERS => '0');
+          entry_index(HASH_MASKING-1 DOWNTO 0) := UNSIGNED(key(HASH_MASKING-1 DOWNTO 0));
+          mcout.addr                           <= slv(UNSIGNED(MEM_BASE) + (entry_index SLL ADDR_WORD_OFF_BIN));
+          entryPtr                             <= slv(UNSIGNED(MEM_BASE) + (entry_index SLL ADDR_WORD_OFF_BIN));
+          mcout.cmd                            <= mread;
+          mcout.start                          <= '1';
+          flag_first                           <= '1';
         WHEN hashing_finish =>
           ptr_i            <= mcin.rdata;
           node_request.ptr <= mcin.rdata;
@@ -193,12 +195,12 @@ BEGIN
             WHEN OTHERS => NULL;
           END CASE;
         WHEN rnode_start =>
-          node_request.cmd = rnode;
+          node_request.cmd <= rnode;
         WHEN rnode_valid =>
           nodeIn.ptr     <= ptr_i;
-          nodeIn.key     <= node_response.key;
-          nodeIn.data    <= node_response.data;
-          nodeIn.nextPtr <= node_response.nextPtr;
+          nodeIn.key     <= node_response.node.key;
+          nodeIn.data    <= node_response.node.data;
+          nodeIn.nextPtr <= node_response.node.nextPtr;
           IF flag_first = '0' THEN       -- update nodePrev
             nodePrev <= nodeIn;
           END IF;
@@ -222,41 +224,12 @@ BEGIN
           node_request.node.nextPtr <= nodeIn.ptr;
           -- update prev node nextPtr if isn't inserting
           -- to start of bucket
-          IF nodePrev.ptr ! = entryPtr THEN
+          IF nodePrev.ptr /= entryPtr THEN
             nodePrev.nextPtr <= alloc_in.ptr;
           END IF;
         WHEN ins_wnode_done =>
-          IF nodePrev.ptr ! = entryPtr THEN
+          IF nodePrev.ptr /= entryPtr THEN
             nodePrev <= nodeIn;
-          ELSE
-            mcout.addr.cmd <= mwrite;
-            mcout.addr     <= entryPtr;
-            mcout.wdata    <= alloc_in.ptr;
-            mcout.start    <= '1';
-          END IF;
-        WHEN insertion =>                -- node alloc
-          alloc_out.cmd   <= malloc;
-          alloc_out.start <= '1';
-        WHEN ins_alloc_done =>
-          node_request.start        <= '1';
-          node_request.cmd          <= wnode;
-          node_request.ptr          <= alloc_in.ptr;
-          -- writing new node
-          node_request.node.ptr     <= alloc_in.ptr;
-          node_request.node.key     <= key;
-          node_request.node.data    <= data;
-          node_request.node.nextPtr <= nodeIn.ptr;
-          -- update prev node nextPtr if isn't inserting
-          -- to start of bucket
-          IF nodePrev.ptr ! = entryPtr THEN
-            nodePrev.nextPtr <= alloc_in.ptr;
-          END IF;
-        WHEN ins_wnode_done =>
-          IF nodePrev.ptr ! = entryPtr THEN
-            node_request.start <= '1';
-            node_request.cmd   <= wnode;
-            node_request.ptr   <= nodePrev.ptr;
-            node_request.node  <= nodePrev;
           ELSE
             mcout.cmd   <= mwrite;
             mcout.addr  <= entryPtr;
@@ -270,11 +243,11 @@ BEGIN
           alloc_out.start <= '1';
           alloc_out.ptr   <= nodeIn.ptr;
           -- update nodePrev nextPtr
-          IF entryPtr ! = nodePrev.ptr THEN
+          IF entryPtr /= nodePrev.ptr THEN
             nodePrev.nextPtr <= nodeIn.nextPtr;
           END IF;
         WHEN del_free_done =>
-          IF entryPtr ! = nodePrev.ptr THEN
+          IF entryPtr /= nodePrev.ptr THEN
             node_request.start <= '1';
             node_request.cmd   <= wnode;
             node_request.ptr   <= nodePrev.ptr;
