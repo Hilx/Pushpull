@@ -41,12 +41,12 @@ ARCHITECTURE syn_dsa_top_wrapper OF dsa_top_wrapper IS
   -- FOR TESTING MALLOC NOW, translator signals
   SIGNAL tra_state, tra_nstate : tra_state_type;
 
-  SIGNAL total_entry_offset : STD_LOGIC_VECTOR;
+  SIGNAL total_entry_offset : STD_LOGIC_VECTOR(31 DOWNTO 0);
 BEGIN
   -- -------------------------------------
   -- ---- total entry info ---------------
   -- -------------------------------------
-  total_entry_offset <= total_entry SLL ADDR_WORD_OFF_BIN;
+  total_entry_offset <= slv(UNSIGNED(total_entry) SLL ADDR_WORD_OFF_BIN);
 
 
   -- -------------------------------------

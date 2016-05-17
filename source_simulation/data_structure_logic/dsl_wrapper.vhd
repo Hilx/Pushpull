@@ -27,8 +27,6 @@ ARCHITECTURE syn_dsl_wrapper OF dsl_wrapper IS
   SIGNAL dsl_state, dsl_nstate : dsl_overall_control_state_type;
   SIGNAL start_bit, done_bit   : dsl_internal_control_type;
 
-
-
   SIGNAL lookup_result : dsl_lookup_result_type;
 
   SIGNAL node_access_request_wire  : node_access_comm_type;
@@ -42,6 +40,11 @@ ARCHITECTURE syn_dsl_wrapper OF dsl_wrapper IS
   SIGNAL mcin_ild, mcout_ild             : mem_control_type;
   SIGNAL mcin_da, mcout_da               : mem_control_type;
   SIGNAL mcin_init_hash, mcout_init_hash : mem_control_type;
+
+  SIGNAL alloc_in_da, alloc_in_ild   : allocator_com_type;
+  SIGNAL alloc_out_da, alloc_out_ild : allocator_com_type;
+
+  SIGNAL dsl_out_i : dsl_com_out_type;
 BEGIN
   -- data structure logic overall control
   dsl_fsm_comb : PROCESS(dsl_state, dsl_in, done_bit)
@@ -73,7 +76,7 @@ BEGIN
     start_bit.ild        <= '0';
     start_bit.delete_all <= '0';
     start_bit.init_hash  <= '0';
-    dsl_out.done         <= '0';
+    dsl_out_i.done       <= '0';
     IF rst = CONST_RESET THEN
       dsl_state <= idle;
     ELSE
@@ -87,15 +90,15 @@ BEGIN
         END CASE;
       END IF;
       IF dsl_state = done THEN          -- feedback to outside
-        dsl_out.done <= '1';            -- done bit
+        dsl_out_i.done <= '1';          -- done bit
       -- --------------------------- REMEMBER TO ADD OTHER RESULT OUTPUT
       END IF;
     END IF;
   END PROCESS;
 
-  -- ---------------------------------------------
-  -- ------------------ memory access partition --
-  -- ---------------------------------------------
+  -- -----------------------------------------------------------
+  -- ------------------ memory and allocator access partition --
+  -- -----------------------------------------------------------
   na_sel_comb : PROCESS(na_state,
                         node_access_request_wire,
                         node_access_response_wire)
@@ -124,7 +127,9 @@ BEGIN
     END IF;
   END PROCESS;
 
-  mem_part : PROCESS(dsl_in, node_access_mem_bit, mcin, mcout_ild, mcout_naccess, mcout_da, mcout_init_hash)
+  mem_part : PROCESS(dsl_in, node_access_mem_bit, mcin, mcout_ild,
+                     mcout_naccess, mcout_da, mcout_init_hash,
+                     alloc_out_ild, alloc_out_da, alloc_in)
   BEGIN
     -- defaults
     mcout          <= mcout_ild;
@@ -147,8 +152,20 @@ BEGIN
     -- mcin_init_hash <= mcin;
     END IF;
 
+    alloc_in_ild <= alloc_in;
+    alloc_in_da  <= alloc_in;
+    alloc_out    <= alloc_out_ild;
+    IF dsl_in.cmd = delete_all THEN
+      alloc_out <= alloc_out_da;
+    END IF;
+    
+
+    
 
   END PROCESS;
+
+
+
 
   -- ---------------------------------------------
   -- ------------------ PORT MAPS ----------------
@@ -184,14 +201,14 @@ BEGIN
       cmd           => dsl_in.cmd,
       done          => done_bit.ild,
       key           => dsl_in.key,
-      data          => dsl_out.data,
+      data          => dsl_out_i.data,
       lookup_result => lookup_result,
       node_request  => node_access_request_wire,
       node_response => node_access_response_wire,
       alloc_in      => alloc_in_ild,
       alloc_out     => alloc_out_ild,
       mcin          => mcin_ild,
-      mcout         => cout_ild
+      mcout         => mcout_ild
       );
 
   na0 : ENTITY dsl_node_access
@@ -203,5 +220,7 @@ BEGIN
       mcin     => mcin_naccess,
       mcout    => mcout_naccess
       );
+
+  dsl_out <= dsl_out_i;
 
 END ARCHITECTURE syn_dsl_wrapper;

@@ -27,7 +27,7 @@ BEGIN
       WHEN idle => nstate <= idle;
                    IF request.start = '1' THEN
                      nstate <= r0start;
-                     IF request.cmd = nwrite THEN
+                     IF request.cmd = wnode THEN
                        nstate <= w0start;
                      END IF;
                    END IF;
@@ -100,7 +100,7 @@ BEGIN
 
         -- done 
         WHEN done => response.done <= '1';
-                     IF request.cmd = nread THEN
+                     IF request.cmd = rnode THEN
                        response.node.data <= mcin.rdata;
                      END IF;
         WHEN OTHERS => NULL;

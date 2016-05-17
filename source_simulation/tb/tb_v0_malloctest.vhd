@@ -1,6 +1,7 @@
 LIBRARY ieee;
 USE ieee.std_logic_1164.ALL;
 USE ieee.numeric_std.ALL;
+USE std.textio.ALL;
 USE ieee.std_logic_textio.ALL;          -- write to files 
 USE work.ALL;
 USE work.config_pack.ALL;
@@ -28,7 +29,7 @@ ARCHITECTURE behav_tb_v0 OF tb_v0 IS
   SIGNAL dsa_response  : dsl_com_out_type;  -- feedback from dsa block
   SIGNAL m_request     : mem_control_type;  -- memory control from dsa
   SIGNAL m_response    : mem_control_type;  -- memory control to dsa
-  SIGNAL total_entry   : STD_LOGIC_VECTOR;
+  SIGNAL total_entry   : STD_LOGIC_VECTOR(31 DOWNTO 0);
   -- memory signals
   SIGNAL ram_we        : STD_LOGIC;     -- write enable
   SIGNAL ram_addr      : slv(31 DOWNTO 0);
@@ -47,13 +48,13 @@ BEGIN
   -- -------------------------------------
   -- ----- Connections and Port Maps -----
   -- -------------------------------------
-  total_entry <= slv(UNSIGNED(32));
+  total_entry <= slv(to_UNSIGNED(32, 32));
   dsa0 : ENTITY dsa_top_wrapper
     PORT MAP(
       PTR_OUT       => myPtr,
       clk           => clk,
       rst           => rst,
-      total_entry   => total_entry;
+      total_entry   => total_entry,
       mmu_init_bit  => mmu_init_bit,
       mmu_init_done => mmu_init_done,
       -- dsl communication
@@ -119,7 +120,7 @@ BEGIN
 
 -- -------------------------------------
 -- ---------- Clock Generation ---------
--- -------------------------------------  
+-- ------------------------------------- use std.textio.all; 
   p1_clkgen : PROCESS
   BEGIN
     clk <= '0';
@@ -192,7 +193,7 @@ BEGIN
         WHEN check =>
           -- write to file
           write(outline, (test_index-1));
-          out_int := to_integer(UNSIGNED(dsa_response.ptr));
+          out_int := to_integer(UNSIGNED(dsa_response.data));
           write(outline, out_int);
           writeline(fout, outline);
         WHEN OTHERS => NULL;
