@@ -80,11 +80,4 @@ PACKAGE dsl_pack IS
                                  w2start, w2wait,
                                  done);
 
-  -- delete all
-  TYPE da_state_type IS (idle,
-                         rbucket, rbucket_wait, rbucket_check,
-                         read_np, read_np_wait, free_node, free_node_wait,
-                         isdone);
-
-
 END PACKAGE;
