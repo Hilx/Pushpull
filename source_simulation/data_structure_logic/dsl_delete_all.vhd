@@ -111,6 +111,7 @@ BEGIN
         WHEN free_node_wait =>          -- IS IT SAFE TO UPDATE NOWPTR NOW?
           nowPtr <= nextPtr; -- make sure pointer to be freed remain valid
         WHEN isdone =>
+	  done <= '1';
         WHEN OTHERS => NULL;
       END CASE;
 

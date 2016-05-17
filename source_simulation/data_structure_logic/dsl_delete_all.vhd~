@@ -109,7 +109,7 @@ BEGIN
           alloc_out.start <= '1';
           alloc_out.ptr   <= nowPtr;
         WHEN free_node_wait =>          -- IS IT SAFE TO UPDATE NOWPTR NOW?
-          nowPtr <= nextPtr;
+          nowPtr <= nextPtr; -- make sure pointer to be freed remain valid
         WHEN isdone =>
         WHEN OTHERS => NULL;
       END CASE;
