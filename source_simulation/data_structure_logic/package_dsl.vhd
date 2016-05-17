@@ -34,12 +34,15 @@ PACKAGE dsl_pack IS
   END RECORD;
 
   TYPE dsl_ild_state_type IS (idle,
-                              hashing,
+                              hashing_start, hashing_wait, hashing_finish,
                               rnode_start, rnode_wait, rnode_valid,
                               compare,
                               isdone,
-                              insertion,
-                              deletion
+                              insertion, ins_alloc_wait, ins_alloc_done,
+                              ins_wnode_wait, ins_wnode_done,
+                              ins_nupdate_wait, ins_nentry_wait,
+                              deletion, del_free_wait, del_free_done,
+                              del_nupdate_wait, del_nentry_wait
                               );
 
   TYPE node_req_cmd_type IS(rnode, wnode);
