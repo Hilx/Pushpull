@@ -23,7 +23,8 @@ PACKAGE config_pack IS
   CONSTANT DATA_OFFSET : UNSIGNED := x"00000010";  -- 2 for bram, 8 for ddr
 
   -- hashing
-  CONSTANT HASH_MASKING : INTEGER := 16;
+  CONSTANT HASH_MASKING     : INTEGER := 16;
+  CONSTANT TOTAL_HASH_ENTRY : INTEGER := 65536;  -- (2^16)
 
                                         -- memory controller related signals
 

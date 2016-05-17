@@ -9,7 +9,7 @@ PACKAGE config_pack IS
 
   CONSTANT nullPtr : slv(31 DOWNTO 0) := (OTHERS => x"FFFF0000");
 
-  -- CONFIGURATION CONSTANTS
+  -- CONFIGURATION CONSTANTS -- pay attention to moving simulation to synthrun
   CONSTANT MEM_BASE          : slv(31 DOWNTO 0) := x"10000000";
   CONSTANT MEM_BLOCK_SIZE    : slv(31 DOWNTO 0) := x"00000010";  -- 16B
   CONSTANT LIST_LENGTH       : INTEGER          := 16384;  -- total mem = 16384*16B
