@@ -224,11 +224,11 @@ BEGIN
           node_request.node.nextPtr <= nodeIn.ptr;
           -- update prev node nextPtr if isn't inserting
           -- to start of bucket
-          IF nodePrev.ptr ! = entryPtr THEN
+          IF nodePrev.ptr /= entryPtr THEN
             nodePrev.nextPtr <= alloc_in.ptr;
           END IF;
         WHEN ins_wnode_done =>
-          IF nodePrev.ptr ! = entryPtr THEN
+          IF nodePrev.ptr /= entryPtr THEN
             node_request.start <= '1';
             node_request.cmd   <= wnode;
             node_request.ptr   <= nodePrev.ptr;
