@@ -26,7 +26,7 @@ PACKAGE dsl_pack IS
     init_hash  : STD_LOGIC;
   END RECORD;
 
-  TYPE hash_init_state_type IS (idle, wstart, wwrite, wwait, compute, done);
+  TYPE hash_init_state_type IS (idle, wstart, wwait, compute, done);
 
   TYPE dsl_lookup_result_type IS RECORD
     data  : slv(31 DOWNTO 0);

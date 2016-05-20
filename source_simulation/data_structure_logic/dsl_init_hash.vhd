@@ -44,7 +44,7 @@ BEGIN
           init_nstate <= compute;
         END IF;
       WHEN compute =>
-        init_nstate <= wwrite;
+        init_nstate <= wstart;
         IF entry_count = slv(to_unsigned(TOTAL_HASH_ENTRY,32)) THEN
           init_nstate <= done;
         END IF;
@@ -66,10 +66,11 @@ BEGIN
     ELSE
       CASE init_state IS
         WHEN idle =>
+            entry_count <= (others =>'0');
           mem_addr    <= MEM_BASE;
           mcout.wdata <= nullPtr;
           mcout.cmd   <= mwrite;
-        WHEN wwrite =>
+        WHEN wstart =>
           mcout.start <= '1';
           entry_count <= slv(UNSIGNED(entry_count) + 1);
         WHEN compute =>

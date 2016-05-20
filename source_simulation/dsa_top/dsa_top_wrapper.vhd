@@ -61,7 +61,7 @@ BEGIN
       clk                => clk,
       rst                => rst,
       total_entry_offset => total_entry_offset,
-      mmu_init_bit       => mmu_init_start_i,  -- mmu_init_bit,
+      mmu_init_bit       => mmu_init_start_i ,  -- mmu_init_bit,
       mmu_init_done      => mmu_init_done_i,
       -- Interval/DS communication
       argu               => alloc_cmd,
@@ -125,7 +125,7 @@ BEGIN
   maa_connect : PROCESS(maa_state, dsl_mc_cmd, alloc_mc_cmd)
   BEGIN
     tmc_out      <= dsl_mc_cmd;
-    IF maa_state <= maa_state_alloc THEN
+    IF maa_state = maa_state_alloc THEN
       tmc_out <= alloc_mc_cmd;
     END IF;
   END PROCESS maa_connect;
@@ -138,18 +138,33 @@ BEGIN
   tra_cmd_comb : PROCESS(request)
   BEGIN
     dsl_request.cmd   <= lookup;
+    
+    dsl_request.start <= '0';
     mmu_init_start_i  <= '0';
-    dsl_request.start <= request.start;
+    
     CASE request.cmd IS
       WHEN MALLOC_INIT =>
-        mmu_init_start_i  <= request.start;
-        dsl_request.start <= '0';
+        --mmu_init_start_i  <= request.start;
+          dsl_request.start <= '0';
+          mmu_init_start_i  <= request.start;
       WHEN HASH_INIT  => dsl_request.cmd <= init_hash;
+       dsl_request.start <= request.start;
+       mmu_init_start_i  <= '0';
       WHEN INS_ITEM   => dsl_request.cmd <= insert;
+       dsl_request.start <= request.start;
+       mmu_init_start_i  <= '0';
       WHEN DEL_ITEM   => dsl_request.cmd <= delete;
+       dsl_request.start <= request.start;
+       mmu_init_start_i  <= '0';
       WHEN SER_ITEM   => dsl_request.cmd <= lookup;
+       dsl_request.start <= request.start;
+       mmu_init_start_i  <= '0';
       WHEN ALL_DELETE => dsl_request.cmd <= delete_all;
+       dsl_request.start <= request.start;
+       mmu_init_start_i  <= '0';
       WHEN OTHERS     => dsl_request.cmd <= lookup;
+                 dsl_request.start <= request.start;
+       mmu_init_start_i  <= '0';
     END CASE;
   END PROCESS;
   dsl_request.key  <= request.key;
@@ -180,12 +195,22 @@ BEGIN
   BEGIN
     WAIT UNTIL clk'event AND clk = '1';
     tra_state         <= tra_nstate;
-    dsl_request.start <= '0';
+  --  dsl_request.start <= '0';
+   --  mmu_init_start_i  <= '0';
     IF rst = CONST_RESET THEN
       tra_state <= tra_state_idle;
     ELSE
       IF tra_state = tra_state_start THEN
-        dsl_request.start <= '1';
+     
+      
+             if request.cmd = MALLOC_INIT then
+               --   mmu_init_start_i  <= '1';
+         end if;
+         if request.cmd /= MALLOC_INIT then 
+              -- dsl_request.start <= '1';
+         end if;
+        
+    
       END IF;
     END IF;
   END PROCESS;

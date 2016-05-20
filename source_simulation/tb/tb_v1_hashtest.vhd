@@ -9,10 +9,10 @@ USE work.dsa_top_pack.ALL;
 USE work.dsl_pack.ALL;
 USE work.tb_pack_v1.ALL;                -- malloc-only testing tb package
 
-ENTITY tb_v0 IS
-END ENTITY tb_v0;
+ENTITY tb_v1 IS
+END ENTITY tb_v1;
 
-ARCHITECTURE behav_tb_v0 OF tb_v0 IS
+ARCHITECTURE behav_tb_v1 OF tb_v1 IS
   -- write to file
   FILE fout                  : TEXT OPEN write_mode IS "TEST_RESULT.txt";
   -- --------
@@ -53,8 +53,8 @@ BEGIN
       dsl_data_out => DSA_RETURN_DATA,
       DSA_DONE_BIT => DSA_DONE_BIT,
       -- memory controller communciation
-      tmc_in       => m_request,
-      tmc_out      => m_response
+      tmc_in       => m_response,
+      tmc_out      => m_request
       );
   ram0 : ENTITY block_ram
     PORT MAP(
@@ -168,4 +168,4 @@ BEGIN
     END IF;  -- if reset stuff    
   END PROCESS;
 
-END ARCHITECTURE behav_tb_v0;
+END ARCHITECTURE;
