@@ -77,6 +77,7 @@ BEGIN
     start_bit.delete_all <= '0';
     start_bit.init_hash  <= '0';
     dsl_out_i.done       <= '0';
+    dsl_out_i.data <= x"7FFF0000"; -- indicating not looking up
     IF rst = CONST_RESET THEN
       dsl_state <= idle;
     ELSE
@@ -91,6 +92,13 @@ BEGIN
       END IF;
       IF dsl_state = done THEN          -- feedback to outside
         dsl_out_i.done <= '1';          -- done bit
+	if dsl_in.cmd = lookup then
+	   if lookup_result.found = '1' then
+		dsl_out_i.data <= lookup_result.data;
+	   else 
+		dsl_out_i.data <= (others => '1'); -- indicating not found
+	   end if;
+        end if;
       -- --------------------------- REMEMBER TO ADD OTHER RESULT OUTPUT
       END IF;
     END IF;
@@ -163,9 +171,6 @@ BEGIN
     
 
   END PROCESS;
-
-
-
 
   -- ---------------------------------------------
   -- ------------------ PORT MAPS ----------------
