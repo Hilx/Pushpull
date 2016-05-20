@@ -40,12 +40,17 @@ ARCHITECTURE syn_dsl_wrapper OF dsl_wrapper IS
   SIGNAL mcin_ild, mcout_ild             : mem_control_type;
   SIGNAL mcin_da, mcout_da               : mem_control_type;
   SIGNAL mcin_init_hash, mcout_init_hash : mem_control_type;
+signal mc_init :mem_control_type;
 
   SIGNAL alloc_in_da, alloc_in_ild   : allocator_com_type;
   SIGNAL alloc_out_da, alloc_out_ild : allocator_com_type;
 
   SIGNAL dsl_out_i : dsl_com_out_type;
 BEGIN
+-- init
+mc_init.start <= '0';
+
+
   -- data structure logic overall control
   dsl_fsm_comb : PROCESS(dsl_state, dsl_in, done_bit)
   BEGIN
@@ -137,27 +142,27 @@ BEGIN
 
   mem_part : PROCESS(dsl_in, node_access_mem_bit, mcin, mcout_ild,
                      mcout_naccess, mcout_da, mcout_init_hash,
-                     alloc_out_ild, alloc_out_da, alloc_in)
+                     alloc_out_ild, alloc_out_da, alloc_in,mc_init)
   BEGIN
     -- defaults
-    mcout          <= mcout_ild;
-    mcin_ild       <= mcin;
-    mcin_init_hash <= mcin;
-    mcin_da        <= mcin;
-    mcin_naccess   <= mcin;
-    IF dsl_in.cmd = insert OR dsl_in.cmd = delete OR dsl_in.cmd = lookup THEN
+    mcout          <= mc_init;
+    mcin_ild       <= mc_init;
+    mcin_init_hash <= mc_init;
+    mcin_da        <= mc_init;
+    mcin_naccess   <= mc_init;
+    IF dsl_in.cmd =  insert OR dsl_in.cmd = delete OR dsl_in.cmd = lookup THEN
       mcout <= mcout_ild;
-      -- mcin_ild <= mcin;
+       mcin_ild <= mcin;
       IF node_access_mem_bit = '1' THEN
         mcout <= mcout_naccess;
-      -- mcin_naccess <= mcin;
+       mcin_naccess <= mcin;
       END IF;
     ELSIF dsl_in.cmd = delete_all THEN
       mcout <= mcout_da;
-    -- mcin_da <= mcin;
+     mcin_da <= mcin;
     ELSIF dsl_in.cmd = init_hash THEN
       mcout <= mcout_init_hash;
-    -- mcin_init_hash <= mcin;
+     mcin_init_hash <= mcin;
     END IF;
 
     alloc_in_ild <= alloc_in;

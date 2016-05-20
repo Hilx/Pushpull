@@ -20,7 +20,7 @@ PACKAGE config_pack IS
   -- LINKED LIST USED
   -- OFFSETS
   CONSTANT KEY_OFFSET  : UNSIGNED := x"00000001";  -- 1 for bram, 4 for ddr
-  CONSTANT DATA_OFFSET : UNSIGNED := x"00000010";  -- 2 for bram, 8 for ddr
+  CONSTANT DATA_OFFSET : UNSIGNED := x"00000002";  -- 2 for bram, 8 for ddr
 
   -- hashing
   CONSTANT HASH_MASKING     : INTEGER := 3;

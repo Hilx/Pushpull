@@ -56,7 +56,17 @@ BEGIN
           ild_nstate <= hashing_finish;
         END IF;
       WHEN hashing_finish =>
+          if mcin.rdata = nullPtr then
+              if cmd = insert then
+                  ild_nstate <= insertion;
+              else
+                  ild_nstate <= isdone;
+              end if;
+              
+              else 
         ild_nstate <= rnode_start;
+        
+       end if;
       -- --------------------
       -- READ NODE
       WHEN rnode_start =>
@@ -74,25 +84,25 @@ BEGIN
         ild_nstate <= rnode_start;      -- if smaller
         -- other cases
         IF cmd = lookup THEN
-          IF key = nodeIn.key OR key > nodeIn.key OR nodeIn.nextPtr = nullPtr THEN
+          IF to_integer(unsigned(key)) = to_integer(unsigned(nodeIn.key)) OR to_integer(unsigned(key)) > to_integer(unsigned(nodeIn.key)) OR to_integer(unsigned(nodeIn.nextPtr)) = to_integer(unsigned(nullPtr)) THEN
             ild_nstate <= isdone;
           END IF;
         ELSIF cmd = insert THEN
-          IF key = nodeIn.key THEN
+          IF to_integer(unsigned(key)) = to_integer(unsigned(nodeIn.key)) THEN
             ild_nstate <= isdone;
-          ELSIF key > nodeIn.key OR nodeIn.nextPtr = nullPtr THEN
+          ELSIF to_integer(unsigned(key)) > to_integer(unsigned(nodeIn.key)) OR to_integer(unsigned(nodeIn.nextPtr)) = to_integer(unsigned(nullPtr)) THEN
             ild_nstate <= insertion;
           END IF;
         ELSIF cmd = delete THEN
-          IF key > nodeIn.key OR nodeIn.nextPtr = nullPtr THEN
+          IF to_integer(unsigned(key)) > to_integer(unsigned(nodeIn.key)) OR to_integer(unsigned(nodeIn.nextPtr)) = to_integer(unsigned(nullPtr)) THEN
             ild_nstate <= isdone;
-          ELSIF key = nodeIn.key THEN
+          ELSIF to_integer(unsigned(key)) = to_integer(unsigned(nodeIn.key)) THEN
             ild_nstate <= deletion;
           END IF;
         END IF;
       -- --------------------
       WHEN isdone =>
-        ild_nstate <= isdone;
+        ild_nstate <= idle;
       -- --------------------
       -- INSERTION
       WHEN insertion =>
@@ -161,7 +171,7 @@ BEGIN
     done            <= '0';
     alloc_out.start <= '0';
     mcout.start     <= '0';
-
+node_request.start        <= '0';
     IF rst = CONST_RESET THEN
       ild_state <= idle;
     ELSE
@@ -174,7 +184,7 @@ BEGIN
           entryPtr                             <= slv(UNSIGNED(MEM_BASE) + (entry_index SLL ADDR_WORD_OFF_BIN));
           mcout.cmd                            <= mread;
           mcout.start                          <= '1';
-          flag_first                           <= '1';
+          flag_first                           <= '1';          
         WHEN hashing_finish =>
           ptr_i            <= mcin.rdata;
           node_request.ptr <= mcin.rdata;
@@ -196,6 +206,8 @@ BEGIN
           END CASE;
         WHEN rnode_start =>
           node_request.cmd <= rnode;
+	  node_request.start <= '1';
+	  
         WHEN rnode_valid =>
           nodeIn.ptr     <= ptr_i;
           nodeIn.key     <= node_response.node.key;
@@ -222,6 +234,9 @@ BEGIN
           node_request.node.key     <= key;
           node_request.node.data    <= data;
           node_request.node.nextPtr <= nodeIn.ptr;
+	if flag_first = '1' then
+	node_request.node.nextPtr <= ptr_i;
+end if;
           -- update prev node nextPtr if isn't inserting
           -- to start of bucket
           IF nodePrev.ptr /= entryPtr THEN

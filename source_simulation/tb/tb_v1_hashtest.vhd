@@ -88,7 +88,8 @@ BEGIN
     WAIT UNTIL clk'event AND clk = '1';
     ram_done_i <= '0';                  -- done bit is usually 0
     fake_it    <= 0;
-    IF ram_we = '1' THEN
+    --IF ram_we = '1' THEN
+    if m_request.start = '1' then
       fake_it <= 1;
     END IF;
     IF fake_it = 1 THEN
