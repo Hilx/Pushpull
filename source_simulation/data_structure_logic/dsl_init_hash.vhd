@@ -9,7 +9,7 @@ ENTITY dsl_init_hash IS
   PORT(
     clk         : IN  STD_LOGIC;
     rst         : IN  STD_LOGIC;
-    total_entry : IN  STD_LOGIC_VECTOR;
+ 
     start_b     : IN  STD_LOGIC;
     done_b      : OUT STD_LOGIC;
     mcin        : IN  mem_control_type;
@@ -27,7 +27,7 @@ BEGIN
   -- -------- write nullPtr as hash entries ------
   -- ---------------------------------------------
   init_fsm_comb : PROCESS(start_b, init_state, mcin,
-                          entry_count, total_entry)
+                          entry_count)
   BEGIN
     init_nstate <= idle;
     CASE init_state IS
@@ -45,7 +45,7 @@ BEGIN
         END IF;
       WHEN compute =>
         init_nstate <= wwrite;
-        IF entry_count = total_entry THEN
+        IF entry_count = slv(to_unsigned(TOTAL_HASH_ENTRY,32)) THEN
           init_nstate <= done;
         END IF;
       WHEN done =>

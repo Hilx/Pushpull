@@ -9,18 +9,16 @@ USE work.dsl_pack.ALL;                  -- data structure logic package
 
 ENTITY dsa_top_wrapper IS
   PORT(
-    PTR_OUT       : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);  -- for testing malloc
-    clk           : IN  STD_LOGIC;
-    rst           : IN  STD_LOGIC;
-    total_entry   : IN  STD_LOGIC_VECTOR;
-    mmu_init_bit  : IN  STD_LOGIC;      -- allocator initialisation command
-    mmu_init_done : OUT STD_LOGIC;
+    PTR_OUT      : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);  -- for testing malloc
+    clk          : IN  STD_LOGIC;
+    rst          : IN  STD_LOGIC;
     -- dsl communication
-    request       : IN  dsa_request_type;  -- untranslated request input
-    response      : OUT dsl_com_out_type;
+    request      : IN  dsa_request_type;  -- untranslated request input
+    dsl_data_out : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
+    DSA_DONE_BIT : OUT STD_LOGIC;
     -- memory controller communciation
-    tmc_in        : IN  mem_control_type;
-    tmc_out       : OUT mem_control_type
+    tmc_in       : IN  mem_control_type;
+    tmc_out      : OUT mem_control_type
     );
 END ENTITY dsa_top_wrapper;
 
@@ -42,24 +40,28 @@ ARCHITECTURE syn_dsa_top_wrapper OF dsa_top_wrapper IS
   SIGNAL tra_state, tra_nstate : tra_state_type;
 
   SIGNAL total_entry_offset : STD_LOGIC_VECTOR(31 DOWNTO 0);
+
+  SIGNAL mmu_init_start_i : STD_LOGIC;
+
+  SIGNAL dsl_response_i : dsl_com_out_type;
+  
 BEGIN
   -- -------------------------------------
   -- ---- total entry info ---------------
   -- -------------------------------------
-  total_entry_offset <= slv(UNSIGNED(total_entry) SLL ADDR_WORD_OFF_BIN);
-
+  total_entry_offset <= slv(TO_UNSIGNED(TOTAL_HASH_ENTRY, 32) SLL ADDR_WORD_OFF_BIN);
 
   -- -------------------------------------
   -- ----- Connections and Port Maps -----
   -- -------------------------------------  
-  response      <= dsl_response;        -- returns corresp. data and done bit
-  mmu_init_done <= mmu_init_done_i;
+  --response      <= dsl_response;        -- returns corresp. data and done bit
+  --mmu_init_done <= mmu_init_done_i;
   alloc0 : ENTITY malloc_wrapper
     PORT MAP(
       clk                => clk,
       rst                => rst,
       total_entry_offset => total_entry_offset,
-      mmu_init_bit       => mmu_init_bit,
+      mmu_init_bit       => mmu_init_start_i,  -- mmu_init_bit,
       mmu_init_done      => mmu_init_done_i,
       -- Interval/DS communication
       argu               => alloc_cmd,
@@ -71,34 +73,34 @@ BEGIN
 
   dsl0 : ENTITY dsl_wrapper
     PORT MAP(
-      clk         => clk,
-      rst         => rst,
-      total_entry => total_entry,
+      clk       => clk,
+      rst       => rst,
       -- dsl communication
-      dsl_in      => dsl_request,
-      dsl_out     => dsl_response,
+      dsl_in    => dsl_request,
+      dsl_out   => dsl_response_i,
       -- allocator communication
-      alloc_in    => alloc_resp,
-      alloc_out   => alloc_cmd,
+      alloc_in  => alloc_resp,
+      alloc_out => alloc_cmd,
       -- memory controller communication
-      mcin        => dsl_mc_resp,
-      mcout       => dsl_mc_cmd
+      mcin      => dsl_mc_resp,
+      mcout     => dsl_mc_cmd
       );
-
+  dsl_data_out <= dsl_response_i.data;
+  DSA_DONE_BIT <= dsl_response_i.done OR mmu_init_done_i;
   -- -------------------------------------
   -- ----- MEMORY ACCESS ARBITRATOR ------
   -- -------------------------------------
   -- memory access arbitrator fsm stuff
   -- TYPE maa_state_type(maa_state_ds, maa_state_alloc);
   maa_fsm_comb : PROCESS(maa_state,
-                         mmu_init_bit, mmu_init_done_i,
+                         mmu_init_start_i, mmu_init_done_i,
                          alloc_cmd, alloc_resp)
   BEGIN
     maa_nstate <= maa_state_ds;
     CASE maa_state IS
       WHEN maa_state_ds =>
         maa_nstate <= maa_state_ds;     -- by default, keep same state
-        IF mmu_init_bit = '1' OR alloc_cmd.start = '1' THEN
+        IF mmu_init_start_i = '1' OR alloc_cmd.start = '1' THEN
           maa_nstate <= maa_state_alloc;
         END IF;
       WHEN maa_state_alloc =>
@@ -132,15 +134,26 @@ BEGIN
   -- ---- Client Request Translator ------
   -- ------------- STAGING ---------------
   -- -------------------------------------
-  -- - CURRENTLY ONLY FOR TESTING MALLOC -
 
   tra_cmd_comb : PROCESS(request)
   BEGIN
-    dsl_request.cmd <= insert;
-    IF request.request_in(1 DOWNTO 0) = b"01" THEN
-      dsl_request.cmd <= delete;
-    END IF;
+    dsl_request.cmd   <= lookup;
+    mmu_init_start_i  <= '0';
+    dsl_request.start <= request.start;
+    CASE request.cmd IS
+      WHEN MALLOC_INIT =>
+        mmu_init_start_i  <= request.start;
+        dsl_request.start <= '0';
+      WHEN HASH_INIT  => dsl_request.cmd <= init_hash;
+      WHEN INS_ITEM   => dsl_request.cmd <= insert;
+      WHEN DEL_ITEM   => dsl_request.cmd <= delete;
+      WHEN SER_ITEM   => dsl_request.cmd <= lookup;
+      WHEN ALL_DELETE => dsl_request.cmd <= delete_all;
+      WHEN OTHERS     => dsl_request.cmd <= lookup;
+    END CASE;
   END PROCESS;
+  dsl_request.key  <= request.key;
+  dsl_request.data <= request.data;
 
   tra_fsm_comb : PROCESS(tra_state, request, dsl_response)
   BEGIN
@@ -176,6 +189,15 @@ BEGIN
       END IF;
     END IF;
   END PROCESS;
+
+  -- -------------------------------------
+  -- ----- DSA CONTOL LOGIC --------------
+  -- -------------------------------------
+
+
+
+
+
 
   -- FOR TESTING
   PTR_OUT <= alloc_resp.ptr;

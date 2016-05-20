@@ -10,9 +10,9 @@ PACKAGE config_pack IS
   CONSTANT nullPtr : slv(31 DOWNTO 0) := x"FFFF0000";
 
   -- CONFIGURATION CONSTANTS -- pay attention to moving simulation to synthrun
-  CONSTANT MEM_BASE          : slv(31 DOWNTO 0) := x"10000000";
-  CONSTANT MEM_BLOCK_SIZE    : slv(31 DOWNTO 0) := x"00000010";  -- 16B
-  CONSTANT LIST_LENGTH       : INTEGER          := 16384;  -- total mem = 16384*16B
+  CONSTANT MEM_BASE          : slv(31 DOWNTO 0) := x"00000000";
+  CONSTANT MEM_BLOCK_SIZE    : slv(31 DOWNTO 0) := x"00000011";  -- 24B(3 words)
+  CONSTANT LIST_LENGTH       : INTEGER          := 496;  -- total mem = 16384*16B
   CONSTANT ADDR_WORD_OFF_BIN : INTEGER          := 0;  --0 for bram, 2 for ddr
   CONSTANT ADDR_WORD_OFF_DEC : UNSIGNED         := x"00000001";  -- 1 for bram, 4 for ddr
 
@@ -23,8 +23,8 @@ PACKAGE config_pack IS
   CONSTANT DATA_OFFSET : UNSIGNED := x"00000010";  -- 2 for bram, 8 for ddr
 
   -- hashing
-  CONSTANT HASH_MASKING     : INTEGER := 16;
-  CONSTANT TOTAL_HASH_ENTRY : INTEGER := 65536;  -- (2^16)
+  CONSTANT HASH_MASKING     : INTEGER := 3;
+  CONSTANT TOTAL_HASH_ENTRY : INTEGER := 8;  -- 65536;  -- (2^16)
 
                                         -- memory controller related signals
 
@@ -38,5 +38,13 @@ PACKAGE config_pack IS
     wdata : slv(31 DOWNTO 0);
     rdata : slv(31 DOWNTO 0);
   END RECORD;
+
+  -- TOP LEVEL COMMAND CONSTANTS
+  CONSTANT MALLOC_INIT : slv(2 DOWNTO 0) := "000";
+  CONSTANT HASH_INIT   : slv(2 DOWNTO 0) := "001";
+  CONSTANT INS_ITEM    : slv(2 DOWNTO 0) := "100";
+  CONSTANT DEL_ITEM    : slv(2 DOWNTO 0) := "101";
+  CONSTANT SER_ITEM    : slv(2 DOWNTO 0) := "110";
+  CONSTANT ALL_DELETE : slv(2 DOWNTO 0) := "111";
 
 END PACKAGE;

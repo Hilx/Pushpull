@@ -10,7 +10,7 @@ ENTITY dsl_wrapper IS
   PORT(
     clk         : IN  STD_LOGIC;
     rst         : IN  STD_LOGIC;
-    total_entry : IN  STD_LOGIC_VECTOR;
+
     -- dsl communication
     dsl_in      : IN  dsl_com_in_type;
     dsl_out     : OUT dsl_com_out_type;
@@ -77,6 +77,7 @@ BEGIN
     start_bit.delete_all <= '0';
     start_bit.init_hash  <= '0';
     dsl_out_i.done       <= '0';
+    dsl_out_i.data <= x"7FFF0000"; -- indicating not looking up
     IF rst = CONST_RESET THEN
       dsl_state <= idle;
     ELSE
@@ -91,6 +92,13 @@ BEGIN
       END IF;
       IF dsl_state = done THEN          -- feedback to outside
         dsl_out_i.done <= '1';          -- done bit
+	if dsl_in.cmd = lookup then
+	   if lookup_result.found = '1' then
+		dsl_out_i.data <= lookup_result.data;
+	   else 
+		dsl_out_i.data <= (others => '1'); -- indicating not found
+	   end if;
+        end if;
       -- --------------------------- REMEMBER TO ADD OTHER RESULT OUTPUT
       END IF;
     END IF;
@@ -164,9 +172,6 @@ BEGIN
 
   END PROCESS;
 
-
-
-
   -- ---------------------------------------------
   -- ------------------ PORT MAPS ----------------
   -- ---------------------------------------------
@@ -174,7 +179,7 @@ BEGIN
     PORT MAP(
       clk         => clk,
       rst         => rst,
-      total_entry => total_entry,
+     
       start_b     => start_bit.init_hash,
       done_b      => done_bit.init_hash,
       mcin        => mcin_init_hash,
