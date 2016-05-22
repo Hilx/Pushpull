@@ -94,7 +94,7 @@ BEGIN
             ild_nstate <= insertion;
           END IF;
         ELSIF cmd = delete THEN
-          IF to_integer(UNSIGNED(key)) > to_integer(UNSIGNED(nodeIn.key)) OR to_integer(UNSIGNED(nodeIn.nextPtr)) = to_integer(UNSIGNED(nullPtr)) THEN
+          IF to_integer(UNSIGNED(key)) > to_integer(UNSIGNED(nodeIn.key)) AND to_integer(UNSIGNED(nodeIn.nextPtr)) = to_integer(UNSIGNED(nullPtr)) THEN
             ild_nstate <= isdone;
           ELSIF to_integer(UNSIGNED(key)) = to_integer(UNSIGNED(nodeIn.key)) THEN
             ild_nstate <= deletion;

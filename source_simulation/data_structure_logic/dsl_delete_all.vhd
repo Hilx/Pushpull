@@ -26,7 +26,8 @@ ARCHITECTURE syn_da OF dsl_delete_all IS
   SIGNAL entry_count               : INTEGER;
 BEGIN
   da_comb : PROCESS(state, start, alloc_in, mcin,
-                    hdBucket, flag_last, nowPtr)
+                    -- hdBucket, 
+                    flag_last, nowPtr)
   BEGIN
     nstate <= idle;                     -- default
     CASE state IS
@@ -37,6 +38,9 @@ BEGIN
         END IF;
       WHEN rbucket =>
         nstate <= rbucket_wait;
+        IF flag_last = '1' THEN
+          nstate <= isdone;
+        END IF;
       WHEN rbucket_wait =>
         nstate <= rbucket_wait;
         IF mcin.done = '1' THEN
@@ -44,11 +48,11 @@ BEGIN
         END IF;
       WHEN rbucket_check =>
         nstate <= read_np;
-        IF hdBucket = nullPtr THEN
+
+        IF mcin.rdata = nullPtr THEN    -- if hdBucket = nullptr
           nstate <= rbucket;
-        ELSIF flag_last = '1' THEN
-          nstate <= isdone;
         END IF;
+        
       WHEN read_np =>
         nstate <= read_np_wait;
         IF nowPtr = nullPtr THEN
@@ -65,6 +69,9 @@ BEGIN
         nstate <= free_node_wait;
         IF alloc_in.done = '1' THEN
           nstate <= read_np;
+          IF nowPtr = nullPtr THEN
+            nstate <= rbucket;
+          END IF;
         END IF;
       WHEN isdone =>
         nstate <= idle;
@@ -89,12 +96,14 @@ BEGIN
           alloc_out.cmd <= free;
           mcout.cmd     <= mread;
         WHEN rbucket =>
-          -- mem interaction
-          mcout.addr  <= slv(uns(MEM_BASE) + (to_unsigned(entry_count, 32) SLL ADDR_WORD_OFF_BIN));
-          mcout.start <= '1';
-          -- internal fsm control
-          entry_count <= entry_count + 1;
-          IF entry_count = (TOTAL_HASH_ENTRY - 2) THEN
+          IF flag_last = '0' THEN
+            -- mem interaction
+            mcout.addr  <= slv(uns(MEM_BASE) + (to_unsigned(entry_count, 32) SLL ADDR_WORD_OFF_BIN));
+            mcout.start <= '1';
+            -- internal fsm control
+            entry_count <= entry_count + 1;
+          END IF;
+          IF entry_count = (TOTAL_HASH_ENTRY - 1) THEN
             flag_last <= '1';
           END IF;
         WHEN rbucket_check =>

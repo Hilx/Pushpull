@@ -7,13 +7,12 @@ USE work.dsl_pack.ALL;
 
 ENTITY dsl_init_hash IS
   PORT(
-    clk         : IN  STD_LOGIC;
-    rst         : IN  STD_LOGIC;
- 
-    start_b     : IN  STD_LOGIC;
-    done_b      : OUT STD_LOGIC;
-    mcin        : IN  mem_control_type;
-    mcout       : OUT mem_control_type
+    clk     : IN  STD_LOGIC;
+    rst     : IN  STD_LOGIC;
+    start_b : IN  STD_LOGIC;
+    done_b  : OUT STD_LOGIC;
+    mcin    : IN  mem_control_type;
+    mcout   : OUT mem_control_type
     );
 END ENTITY dsl_init_hash;
 
@@ -45,7 +44,7 @@ BEGIN
         END IF;
       WHEN compute =>
         init_nstate <= wstart;
-        IF entry_count = slv(to_unsigned(TOTAL_HASH_ENTRY,32)) THEN
+        IF entry_count = slv(to_unsigned(TOTAL_HASH_ENTRY, 32)) THEN
           init_nstate <= done;
         END IF;
       WHEN done =>
@@ -66,7 +65,7 @@ BEGIN
     ELSE
       CASE init_state IS
         WHEN idle =>
-            entry_count <= (others =>'0');
+          entry_count <= (OTHERS => '0');
           mem_addr    <= MEM_BASE;
           mcout.wdata <= nullPtr;
           mcout.cmd   <= mwrite;
