@@ -73,7 +73,7 @@ BEGIN
         ild_nstate <= rnode_wait;
       WHEN rnode_wait =>
         ild_nstate <= rnode_wait;
-        IF mcin.done = '1' THEN
+        IF node_response.done = '1' THEN
           ild_nstate <= rnode_valid;
         END IF;
       WHEN rnode_valid =>
@@ -121,7 +121,7 @@ BEGIN
         END IF;
       WHEN ins_wnode_done =>
         ild_nstate <= ins_nupdate_wait;
-        IF entryPtr = nodePrev.ptr THEN
+        IF UNSIGNED(entryPtr) = UNSIGNED(nodePrev.ptr) AND to_integer(UNSIGNED(key)) > to_integer(UNSIGNED(nodeIn.key)) THEN
           ild_nstate <= ins_nentry_wait;
         END IF;
       WHEN ins_nupdate_wait =>
@@ -226,14 +226,18 @@ BEGIN
           alloc_out.cmd   <= malloc;
           alloc_out.start <= '1';
         WHEN ins_alloc_done =>
-          node_request.start        <= '1';
-          node_request.cmd          <= wnode;
-          node_request.ptr          <= alloc_in.ptr;
+          node_request.start     <= '1';
+          node_request.cmd       <= wnode;
+          node_request.ptr       <= alloc_in.ptr;
           -- writing new node
-          node_request.node.ptr     <= alloc_in.ptr;
-          node_request.node.key     <= key;
-          node_request.node.data    <= data;
-          node_request.node.nextPtr <= nodeIn.ptr;
+          node_request.node.ptr  <= alloc_in.ptr;
+          node_request.node.key  <= key;
+          node_request.node.data <= data;
+          IF to_integer(UNSIGNED(key)) > to_integer(UNSIGNED(nodeIn.key)) THEN
+            node_request.node.nextPtr <= nodeIn.ptr;
+          ELSE
+            node_request.node.nextPtr <= nodeIn.nextPtr;
+          END IF;
           IF flag_first = '1' THEN
             node_request.node.nextPtr <= ptr_i;
           END IF;
@@ -243,16 +247,23 @@ BEGIN
             nodePrev.nextPtr <= alloc_in.ptr;
           END IF;
         WHEN ins_wnode_done =>
-          IF nodePrev.ptr /= entryPtr THEN
-            node_request.start <= '1';
-            node_request.cmd   <= wnode;
-            node_request.ptr   <= nodePrev.ptr;
-            node_request.node  <= nodePrev;
-          ELSE
+          IF nodePrev.ptr = entryPtr AND to_integer(UNSIGNED(key)) > to_integer(UNSIGNED(nodeIn.key)) THEN
             mcout.cmd   <= mwrite;
             mcout.addr  <= entryPtr;
             mcout.wdata <= alloc_in.ptr;
             mcout.start <= '1';
+          ELSE
+            node_request.start <= '1';
+            node_request.cmd   <= wnode;
+            node_request.ptr   <= nodePrev.ptr;
+            node_request.node  <= nodePrev;
+            IF nodePrev.ptr = entryPtr OR (to_integer(UNSIGNED(key)) < to_integer(UNSIGNED(nodeIn.key))) THEN
+              node_request.ptr          <= nodeIn.ptr;
+              node_request.node.ptr     <= nodeIn.ptr;
+              node_request.node.key     <= nodeIn.key;
+              node_request.node.data    <= nodeIn.data;
+              node_request.node.nextPtr <= alloc_in.ptr;
+            END IF;
           END IF;
         -- -----------------------
         -- deletion

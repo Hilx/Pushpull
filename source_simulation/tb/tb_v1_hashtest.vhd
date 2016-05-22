@@ -89,7 +89,7 @@ BEGIN
     ram_done_i <= '0';                  -- done bit is usually 0
     fake_it    <= 0;
     --IF ram_we = '1' THEN
-    if m_request.start = '1' then
+    IF m_request.start = '1' THEN
       fake_it <= 1;
     END IF;
     IF fake_it = 1 THEN
@@ -117,7 +117,7 @@ BEGIN
   -- -------------------------------------
   -- TB FSM: init and send commands ------
   -- -------------------------------------
-  tb_fsm0_comb : PROCESS(tb_state, DSA_DONE_BIT,test_index)
+  tb_fsm0_comb : PROCESS(tb_state, DSA_DONE_BIT, test_index)
   BEGIN
     tb_nstate <= idle;
     CASE tb_state IS
@@ -140,7 +140,7 @@ BEGIN
   tb_fsm0_reg : PROCESS
     -- write to file variables
     VARIABLE outline : LINE;
-    VARIABLE out_int : slv(31 downto 0);
+    VARIABLE out_int : slv(31 DOWNTO 0);
   BEGIN
     WAIT UNTIL clk'event AND clk = '1';
 

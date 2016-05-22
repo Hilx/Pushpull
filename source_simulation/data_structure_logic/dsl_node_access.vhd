@@ -80,10 +80,13 @@ BEGIN
         -- read node
         WHEN r0start => mcout.cmd <= mread;
                         mcout.start <= '1';
+                        mcout.addr  <= request.ptr;
         WHEN r1start => mcout.start <= '1';
+                        mcout.addr            <= slv(UNSIGNED(request.ptr) + KEY_OFFSET);
                         response.node.ptr     <= request.ptr;
                         response.node.nextPtr <= mcin.rdata;
         WHEN r2start => mcout.start <= '1';
+                        mcout.addr        <= slv(UNSIGNED(request.ptr)+ DATA_OFFSET);
                         response.node.key <= mcin.rdata;
 
         -- write node

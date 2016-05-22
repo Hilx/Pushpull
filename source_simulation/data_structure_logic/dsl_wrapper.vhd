@@ -8,9 +8,8 @@ USE work.dsl_pack.ALL;
 
 ENTITY dsl_wrapper IS
   PORT(
-    clk : IN STD_LOGIC;
-    rst : IN STD_LOGIC;
-
+    clk       : IN  STD_LOGIC;
+    rst       : IN  STD_LOGIC;
     -- dsl communication
     dsl_in    : IN  dsl_com_in_type;
     dsl_out   : OUT dsl_com_out_type;
@@ -211,7 +210,7 @@ BEGIN
       cmd           => dsl_in.cmd,
       done          => done_bit.ild,
       key           => dsl_in.key,
-      data          => dsl_out_i.data,
+      data          => dsl_in.data,
       lookup_result => lookup_result,
       node_request  => node_access_request_wire,
       node_response => node_access_response_wire,
