@@ -8,18 +8,18 @@ USE work.dsl_pack.ALL;
 
 ENTITY dsl_wrapper IS
   PORT(
-    clk         : IN  STD_LOGIC;
-    rst         : IN  STD_LOGIC;
+    clk : IN STD_LOGIC;
+    rst : IN STD_LOGIC;
 
     -- dsl communication
-    dsl_in      : IN  dsl_com_in_type;
-    dsl_out     : OUT dsl_com_out_type;
+    dsl_in    : IN  dsl_com_in_type;
+    dsl_out   : OUT dsl_com_out_type;
     -- allocator communication
-    alloc_in    : IN  allocator_com_type;
-    alloc_out   : OUT allocator_com_type;
+    alloc_in  : IN  allocator_com_type;
+    alloc_out : OUT allocator_com_type;
     -- memory controller communication
-    mcin        : IN  mem_control_type;
-    mcout       : OUT mem_control_type
+    mcin      : IN  mem_control_type;
+    mcout     : OUT mem_control_type
     );
 END ENTITY dsl_wrapper;
 
@@ -40,7 +40,7 @@ ARCHITECTURE syn_dsl_wrapper OF dsl_wrapper IS
   SIGNAL mcin_ild, mcout_ild             : mem_control_type;
   SIGNAL mcin_da, mcout_da               : mem_control_type;
   SIGNAL mcin_init_hash, mcout_init_hash : mem_control_type;
-signal mc_init :mem_control_type;
+  SIGNAL mc_init                         : mem_control_type;
 
   SIGNAL alloc_in_da, alloc_in_ild   : allocator_com_type;
   SIGNAL alloc_out_da, alloc_out_ild : allocator_com_type;
@@ -48,7 +48,7 @@ signal mc_init :mem_control_type;
   SIGNAL dsl_out_i : dsl_com_out_type;
 BEGIN
 -- init
-mc_init.start <= '0';
+  mc_init.start <= '0';
 
 
   -- data structure logic overall control
@@ -82,7 +82,7 @@ mc_init.start <= '0';
     start_bit.delete_all <= '0';
     start_bit.init_hash  <= '0';
     dsl_out_i.done       <= '0';
-    dsl_out_i.data <= x"7FFF0000"; -- indicating not looking up
+    dsl_out_i.data       <= x"7FFF0000";        -- indicating not looking up
     IF rst = CONST_RESET THEN
       dsl_state <= idle;
     ELSE
@@ -95,15 +95,15 @@ mc_init.start <= '0';
           WHEN init_hash  => start_bit.init_hash  <= '1';
         END CASE;
       END IF;
-      IF dsl_state = done THEN          -- feedback to outside
-        dsl_out_i.done <= '1';          -- done bit
-	if dsl_in.cmd = lookup then
-	   if lookup_result.found = '1' then
-		dsl_out_i.data <= lookup_result.data;
-	   else 
-		dsl_out_i.data <= (others => '1'); -- indicating not found
-	   end if;
-        end if;
+      IF dsl_state = done THEN                  -- feedback to outside
+        dsl_out_i.done <= '1';                  -- done bit
+        IF dsl_in.cmd = lookup THEN
+          IF lookup_result.found = '1' THEN
+            dsl_out_i.data <= lookup_result.data;
+          ELSE
+            dsl_out_i.data <= (OTHERS => '1');  -- indicating not found
+          END IF;
+        END IF;
       -- --------------------------- REMEMBER TO ADD OTHER RESULT OUTPUT
       END IF;
     END IF;
@@ -142,7 +142,7 @@ mc_init.start <= '0';
 
   mem_part : PROCESS(dsl_in, node_access_mem_bit, mcin, mcout_ild,
                      mcout_naccess, mcout_da, mcout_init_hash,
-                     alloc_out_ild, alloc_out_da, alloc_in,mc_init)
+                     alloc_out_ild, alloc_out_da, alloc_in, mc_init)
   BEGIN
     -- defaults
     mcout          <= mc_init;
@@ -150,19 +150,19 @@ mc_init.start <= '0';
     mcin_init_hash <= mc_init;
     mcin_da        <= mc_init;
     mcin_naccess   <= mc_init;
-    IF dsl_in.cmd =  insert OR dsl_in.cmd = delete OR dsl_in.cmd = lookup THEN
-      mcout <= mcout_ild;
-       mcin_ild <= mcin;
+    IF dsl_in.cmd = insert OR dsl_in.cmd = delete OR dsl_in.cmd = lookup THEN
+      mcout    <= mcout_ild;
+      mcin_ild <= mcin;
       IF node_access_mem_bit = '1' THEN
-        mcout <= mcout_naccess;
-       mcin_naccess <= mcin;
+        mcout        <= mcout_naccess;
+        mcin_naccess <= mcin;
       END IF;
     ELSIF dsl_in.cmd = delete_all THEN
-      mcout <= mcout_da;
-     mcin_da <= mcin;
+      mcout   <= mcout_da;
+      mcin_da <= mcin;
     ELSIF dsl_in.cmd = init_hash THEN
-      mcout <= mcout_init_hash;
-     mcin_init_hash <= mcin;
+      mcout          <= mcout_init_hash;
+      mcin_init_hash <= mcin;
     END IF;
 
     alloc_in_ild <= alloc_in;
@@ -182,13 +182,13 @@ mc_init.start <= '0';
   -- ---------------------------------------------
   inithash0 : ENTITY dsl_init_hash
     PORT MAP(
-      clk         => clk,
-      rst         => rst,
-     
-      start_b     => start_bit.init_hash,
-      done_b      => done_bit.init_hash,
-      mcin        => mcin_init_hash,
-      mcout       => mcout_init_hash
+      clk => clk,
+      rst => rst,
+
+      start_b => start_bit.init_hash,
+      done_b  => done_bit.init_hash,
+      mcin    => mcin_init_hash,
+      mcout   => mcout_init_hash
       );
 
   de_all0 : ENTITY dsl_delete_all
