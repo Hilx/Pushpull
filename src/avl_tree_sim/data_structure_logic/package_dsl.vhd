@@ -5,7 +5,7 @@ USE ieee.numeric_std.ALL;
 PACKAGE dsl_pack IS
   ALIAS slv IS STD_LOGIC_VECTOR;
 
-  TYPE dsl_cmd_type IS(insert, delete, lookup, delete_all, init_hash);
+  TYPE dsl_cmd_type IS(insert, delete, lookup, delete_all);
 
   TYPE dsl_com_in_type IS RECORD
     key   : slv(31 DOWNTO 0);
@@ -23,7 +23,6 @@ PACKAGE dsl_pack IS
   TYPE dsl_internal_control_type IS RECORD
     ild        : STD_LOGIC;
     delete_all : STD_LOGIC;
-    init_hash  : STD_LOGIC;
   END RECORD;
 
   TYPE hash_init_state_type IS (idle, wstart, wwait, compute, done);
@@ -33,32 +32,15 @@ PACKAGE dsl_pack IS
     found : STD_LOGIC;                  -- 0, not found; 1, found
   END RECORD;
 
-  TYPE dsl_ild_state_type IS (idle,
-                              hashing_start, hashing_wait, hashing_finish,
-                              rnode_start, rnode_wait, rnode_valid,
-                              compare,
-                              isdone,
-                              insertion, ins_alloc_wait, ins_alloc_done,
-                              ins_wnode_wait, ins_wnode_done,
-                              ins_nupdate_wait, ins_nentry_wait,
-                              deletion, del_free_wait, del_free_done,
-                              del_nupdate_wait, del_nentry_wait
-                              );
+  TYPE dsl_ild_state_type IS ();
 
-  --TYPE node_req_cmd_type IS(rnode, wnode);
-  -- TYPE hash_node_access_control_type IS RECORD
-  --   cmd     : STD_LOGIC;
-  --   ptr     : slv(31 DOWNTO 0);
-  --   key     : slv(31 DOWNTO 0);
-  --   data    : slv(31 DOWNTO 0);
-  --   nextPtr : slv(31 DOWNTO 0);
-  -- END RECORD;
-
-  TYPE hash_node_type IS RECORD
-    ptr     : slv(31 DOWNTO 0);
-    key     : slv(31 DOWNTO 0);
-    data    : slv(31 DOWNTO 0);
-    nextPtr : slv(31 DOWNTO 0);
+  TYPE tree_node_type IS RECORD
+    ptr      : slv(31 DOWNTO 0);
+    key      : slv(31 DOWNTO 0);
+    data     : slv(31 DOWNTO 0);
+    leftPtr  : slv(31 DOWNTO 0);
+    rightPtr : slv(31 DOWNTO 0);
+    height   : slv(31 DOWNTO 0);
   END RECORD;
 
   TYPE node_access_cmd_type IS (rnode, wnode);
@@ -81,10 +63,6 @@ PACKAGE dsl_pack IS
                                  done);
 
   -- delete all
-  TYPE da_state_type IS (idle,
-                         rbucket, rbucket_wait, rbucket_check,
-                         read_np, read_np_wait, free_node, free_node_wait,
-                         isdone);
-
+  TYPE da_state_type IS ();
 
 END PACKAGE;
