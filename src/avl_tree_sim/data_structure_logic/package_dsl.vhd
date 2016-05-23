@@ -25,14 +25,22 @@ PACKAGE dsl_pack IS
     delete_all : STD_LOGIC;
   END RECORD;
 
-  TYPE hash_init_state_type IS (idle, wstart, wwait, compute, done);
-
   TYPE dsl_lookup_result_type IS RECORD
     data  : slv(31 DOWNTO 0);
     found : STD_LOGIC;                  -- 0, not found; 1, found
   END RECORD;
 
-  TYPE dsl_ild_state_type IS ();
+  TYPE dsl_ild_state_type IS (idle,
+                              root_check,
+                              nalloc_start, nalloc_wait, nalloc_done,
+                              rnode_start, rnode_wait, rnode_done,
+                              wnode_start, wnode_wait, wnode_done,
+                              compare,
+                              pupdate,
+                              ins_update_prevnode,
+                              deletion,
+                              balance_start, balance_wait, balance_done,
+                              isdone);
 
   TYPE tree_node_type IS RECORD
     ptr      : slv(31 DOWNTO 0);
@@ -40,15 +48,16 @@ PACKAGE dsl_pack IS
     data     : slv(31 DOWNTO 0);
     leftPtr  : slv(31 DOWNTO 0);
     rightPtr : slv(31 DOWNTO 0);
-    height   : slv(31 DOWNTO 0);
+    height   : INTEGER;
   END RECORD;
+
 
   TYPE node_access_cmd_type IS (rnode, wnode);
 
   TYPE node_access_comm_type IS RECORD
     cmd   : node_access_cmd_type;
     ptr   : slv(31 DOWNTO 0);
-    node  : hash_node_type;
+    node  : tree_node_type;
     start : STD_LOGIC;
     done  : STD_LOGIC;
   END RECORD;
@@ -65,4 +74,15 @@ PACKAGE dsl_pack IS
   -- delete all
   TYPE da_state_type IS ();
 
+  -- INSERT
+  TYPE insert_state_type IS (idle, checkroot,
+                             rnode_start, rnode_wait, rnode_done,
+                             alloc_start, alloc_wait, alloc_done,
+                             wnew_start, wnew_wait, wnew_done,
+                             comparekey,
+                             par_update,
+                             par_balance,
+                             stack_read,
+                             balance_node,
+                             isdone);
 END PACKAGE;
