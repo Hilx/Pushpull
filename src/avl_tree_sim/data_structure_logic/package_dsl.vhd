@@ -80,8 +80,9 @@ PACKAGE dsl_pack IS
                              alloc_start, alloc_wait, alloc_done,
                              wnew_start, wnew_wait, wnew_done,
                              comparekey,
-                             par_update,
-                             par_balance,
+                             post_link, post_readwait, post_height,
+                             check_balance,
+
                              stack_read,
                              balance_node,
                              isdone);
