@@ -32,7 +32,6 @@ ARCHITECTURE syn_dsl_insert OF dsl_insert IS
   SIGNAL state, nstate                    : insert_state_type;
   SIGNAL bal_state, bal_nstate            : insert_bal_state_type;
   SIGNAL rootPtr, nowPtr                  : slv(31 DOWNTO 0);
-  SIGNAL flag_stack_end                   : STD_LOGIC;
   SIGNAL balancing_done_bit               : STD_LOGIC;
   SIGNAL balancing_start_bit              : STD_LOGIC;
   SIGNAL node_request_bal                 : node_access_comm_type;
@@ -172,7 +171,7 @@ BEGIN
   -- ------------------ BALANCING -----------------------------
   -- ----------------------------------------------------------
   insbal_comb : PROCESS(bal_state, balancing_start_bit, balcase,
-                        key, left_child, right_child,
+                        key, left_child, right_child, saddr1,
                         node_response_bal)
   BEGIN
     bal_nstate <= idle;
@@ -289,11 +288,12 @@ BEGIN
     ELSE
       CASE bal_state IS
         WHEN idle =>
-          ancNode <= NodeIn;
-          saddr1  <= saddr0;
+          ancNode    <= NodeIn;
+          saddr1     <= saddr0;
+          updatedPtr <= newNode.ptr;
         WHEN ulink =>
           IF to_integer(uns(key)) < ancNode.key THEN
-            ancNode.leftPtr    <= newNode.ptr;
+            ancNode.leftPtr    <= updatedPtr;
             left_child         <= newNode;
             missing_child_type <= rightChild;
             -- reading missing child
@@ -305,7 +305,7 @@ BEGIN
               right_child.height <= 0;
             END IF;
           ELSE
-            ancNode.rightPtr   <= newNode.ptr;
+            ancNode.rightPtr   <= updatedPtr;
             right_child        <= newNode;
             missing_child_type <= leftChild;
             -- reading missing child
