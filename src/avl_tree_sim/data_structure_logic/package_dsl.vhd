@@ -30,18 +30,6 @@ PACKAGE dsl_pack IS
     found : STD_LOGIC;                  -- 0, not found; 1, found
   END RECORD;
 
-  TYPE dsl_ild_state_type IS (idle,
-                              root_check,
-                              nalloc_start, nalloc_wait, nalloc_done,
-                              rnode_start, rnode_wait, rnode_done,
-                              wnode_start, wnode_wait, wnode_done,
-                              compare,
-                              pupdate,
-                              ins_update_prevnode,
-                              deletion,
-                              balance_start, balance_wait, balance_done,
-                              isdone);
-
   TYPE tree_node_type IS RECORD
     ptr      : slv(31 DOWNTO 0);
     key      : slv(31 DOWNTO 0);
@@ -71,8 +59,6 @@ PACKAGE dsl_pack IS
                                  w2start, w2wait,
                                  done);
 
-  -- delete all
-  TYPE da_state_type IS ();
 
   -- INSERT
   TYPE insert_state_type IS (idle, checkroot,
@@ -80,10 +66,23 @@ PACKAGE dsl_pack IS
                              alloc_start, alloc_wait, alloc_done,
                              wnew_start, wnew_wait, wnew_done,
                              comparekey,
-                             post_link, post_readwait, post_height,
-                             check_balance,
-
-                             stack_read,
-                             balance_node,
+                             balancing,
                              isdone);
+
+  TYPE insert_bal_state_type IS(idle,
+                                ulink,
+                                readchild_wait,
+                                cal_bal,
+                                check_bal,
+                                r1, r2, r3, r4, r5, r6, r7, r8,
+                                l1, l2, l3, l4, l5, l6, l7, l8,
+                                c_prep_wait, c_prep_done,
+                                d_prep_wait, d_prep_done,
+                                drcheck,
+                                rotation_done,
+                                read_stack,
+                                isdone);
+
+  TYPE balancing_case_type IS (A, B, C, D);
+
 END PACKAGE;

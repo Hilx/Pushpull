@@ -29,56 +29,60 @@ END ENTITY dsl_insert;
 
 ARCHITECTURE syn_dsl_insert OF dsl_insert IS
   ALIAS uns IS UNSIGNED;
-  SIGNAL state, nstate   : insert_state_type;
-  SIGNAL rootPtr, nowPtr : slv(31 DOWNTO 0);
-  SIGNAL flag_stack_end  : STD_LOGIC;
+  SIGNAL state, nstate         : insert_state_type;
+  SIGNAL bal_state, bal_nstate : insert_bal_state_type;
+  SIGNAL rootPtr, nowPtr       : slv(31 DOWNTO 0);
+  SIGNAL flag_stack_end        : STD_LOGIC;
+  SIGNAL balancing_done_bit    : STD_LOGIC;
+  SIGNAL balancing_start_bit   : STD_LOGIC;
+  SIGNAL node_request_bal      : node_access_comm_type;
+  SIGNAL node_response_bal     : node_access_comm_type;
+  SIGNAL flag_end_of_stack     : STD_LOGIC;
+  SIGNAL balcase               : balancing_case_type;
+  SIGNAL balance_factor        : SIGNED(31 DOWNTO 0);
 BEGIN
-  
+  -- ----------------------------------------------------------
+  -- --------------- INSERT SEARCH AND ALLOCATE ---------------
+  -- ----------------------------------------------------------
   ins_comb : PROCESS(state, start, key, node_response, alloc_in,
-                     rootPtr_IN, nodeIn, flag_stack_end)
+                     rootPtr_IN, nodeIn, flag_stack_end,
+                     balancing_done_bit)
   BEGIN
     nstate <= idle;
     CASE state IS
-      WHEN idle =>
-        nstate <= idle;
-        IF start = '1' THEN
-          nstate <= checkroot;
-        END IF;
-      WHEN checkroot =>
-        nstate <= rnode_start;
-        IF rootPtr_IN = nullPtr THEN
-          nstate <= alloc_start;
-        END IF;
-      WHEN rnode_start =>
-        nstate <= rnode_wait;
-      WHEN rnode_wait =>
-        nstate <= rnode_wait;
-        IF node_response.done = '1' THEN
-          nstate <= rnode_done;
-        END IF;
-      WHEN rnode_done =>
-        nstate <= comparekey;
-      WHEN alloc_start =>
-        nstate <= alloc_wait;
-      WHEN alloc_wait =>
-        nstate <= alloc_wait;
-        IF alloc_in.done = '1' THEN
-          nstate <= alloc_done;
-        END IF;
-      WHEN alloc_done =>
-        nstate <= wnew_start;
-      WHEN wnew_start=>
-        nstate <= wnew_wait;
-      WHEN wnew_wait =>
-        nstate <= wnew_wait;
-        IF node_response.done = '1' THEN
-          nstate <= wnew_done;
-        END IF;
-      WHEN wnew_done =>
-        nstate <= par_update;
-        IF rootPtr_IN = nullPtr THEN
-          nstate <= isdone;
-        END IF;
+      WHEN idle => nstate <= idle;
+                   IF start = '1' THEN
+                     nstate <= checkroot;
+                   END IF;
+      WHEN checkroot => nstate <= rnode_start;
+                        IF rootPtr_IN = nullPtr THEN
+                          nstate <= alloc_start;
+                        END IF;
+      WHEN rnode_start => nstate <= rnode_wait;
+      WHEN rnode_wait  => nstate <= rnode_wait;
+                          IF node_response.done = '1' THEN
+                            nstate <= rnode_done;
+                          END IF;
+      WHEN rnode_done  => nstate <= comparekey;
+      WHEN alloc_start => nstate <= alloc_wait;
+      WHEN alloc_wait  => nstate <= alloc_wait;
+                          IF alloc_in.done = '1' THEN
+                            nstate <= alloc_done;
+                          END IF;
+      WHEN alloc_done => nstate <= wnew_start;
+      WHEN wnew_start => nstate <= wnew_wait;
+      WHEN wnew_wait  => nstate <= wnew_wait;
+                         IF node_response.done = '1' THEN
+                           nstate <= wnew_done;
+                         END IF;
+      WHEN wnew_done => nstate <= balancing;
+                        IF rootPtr_IN = nullPtr THEN
+                          nstate <= isdone;
+                        END IF;
+      WHEN balancing => nstate <= balancing;
+                        IF balancing_done_bit = '1' THEN
+                          nstate <= isdone;
+                        END IF;
       WHEN comparekey =>
         nstate <= rnode_start;
         IF to_integer(uns(key)) = to_integer(uns(nodeIn.key)) THEN
@@ -92,17 +96,6 @@ BEGIN
             nstate <= alloc_start;
           END IF;
         END IF;
-      WHEN par_update=>
-        nstate <= par_balance;
-      WHEN par_balance =>
-        nstate <= stack_read;
-      WHEN stack_read=>
-        nstate <= balance_node;
-      WHEN balance_node =>
-        nstate <= stack_read;
-        IF flag_stack_end = '1' THEN
-          nstate <= isdone;
-        END IF;
       WHEN isdone => nstate <= idle;
       WHEN OTHERS => nstate <= idle;
     END CASE;
@@ -112,10 +105,11 @@ BEGIN
   ins_reg : PROCESS
   BEGIN
     WAIT UNTIL clk'event AND clk = '1';
-    state              <= nstate;
-    done               <= '0';
-    alloc_out.start    <= '0';
-    node_request.start <= '0';
+    state               <= nstate;
+    done                <= '0';
+    alloc_out.start     <= '0';
+    node_request.start  <= '0';
+    balancing_start_bit <= '1';
     IF rst = CONST_RESET THEN
       state <= idle;
     ELSE
@@ -140,18 +134,13 @@ BEGIN
           node_request.node  <= newNode;
           node_request.start <= '1';
           node_request.cmd   <= wnode;
+        WHEN wnew_done =>
+          balancing_start_bit <= '1';
         WHEN rnode_start=>
           node_request.start <= '1';
           node_request.cmd   <= rnode;
         WHEN rnode_done =>
           nodeIn <= node_response.node;
-        WHEN par_update =>
-          -- HOW ABOUT HEIGHT?
-          IF to_integer(uns(key)) < to_integer(uns(nodeIn.key)) THEN
-            nodeIn.leftPtr <= alloc_in.ptr;
-          ELSE
-            nodeIn.rightPtr <= alloc_in.ptr;
-          END IF;
         WHEN isdone =>
           done <= '1';
           -- root ptr may be updated due to balancing as well
@@ -166,5 +155,120 @@ BEGIN
     END IF;  -- if reset 
 
   END PROCESS;
-  
+
+  -- ----------------------------------------------------------
+  -- ------------------ BALANCING -----------------------------
+  -- ----------------------------------------------------------
+  insbal_comb : PROCESS(bal_state, balancing_start_bit, balcase,
+                        key, left_child, right_child,
+                        node_response_bal)
+  BEGIN
+    bal_nstate <= idle;
+    CASE bal_state IS
+      WHEN idle => bal_nstate <= idle;
+                   IF balancing_start_bit = '1' THEN
+                     bal_nstate <= ulink;
+                   END IF;
+      WHEN ulink          => bal_nstate <= readchild_wait;
+      WHEN readchild_wait => bal_nstate <= readchild_wait;
+                             IF node_response_bal.done = '1' THEN
+                               bal_nstate <= cal_bal;
+                             END IF;
+      WHEN cal_bal => bal_nstate <= check_bal;
+      WHEN check_bal =>
+        bal_nstate <= read_stack;
+        IF balance_factor > 1 AND key < left_child.key THEN       -- A
+          bal_nstate <= r1;
+        ELSIF balance_factor < -1 AND key > right_child.key THEN  -- B
+          bal_nstate <= l1;
+        ELSIF balance_factor > 1 AND key > left_child.key THEN    -- C
+          bal_nstate <= c_prep_wait;
+        ELSIF balance_factor < -1 AND key < right_child.key THEN  -- D
+          bal_nstate <= d_prep_wait;
+        END IF;
+      -- -----------------------------
+      -- ------ RIGHT ROTATION -------
+      -- -----------------------------
+      WHEN r1 => bal_nstate <= r2;
+      WHEN r2 => bal_nstate <= r3;
+      WHEN r3 => bal_nstate <= r3;
+                 IF node_response_bal.done = '1' THEN
+                   bal_nstate <= r4;
+                 END IF;
+      WHEN r4 => bal_nstate <= r5;
+      WHEN r5 => bal_nstate <= r6;
+      WHEN r6 => bal_nstate <= r6;
+                 IF node_response_bal.done = '1' THEN
+                   bal_nstate <= r7;
+                 END IF;
+      WHEN r7 => bal_nstate <= r8;
+      WHEN r8 => bal_nstate <= r8;
+                 IF node_response_bal.done = '1' THEN
+                   bal_nstate <= rotation_done;
+                   IF balcase = D THEN
+                     bal_nstate <= drcheck;
+                   END IF;
+                 END IF;
+      -- -----------------------------
+      -- ------ LEFT ROTATION --------
+      -- -----------------------------
+      WHEN l1 => bal_nstate <= l2;
+      WHEN l2 => bal_nstate <= l3;
+      WHEN l3 => bal_nstate <= l3;
+                 IF node_response_bal.done = '1' THEN
+                   bal_nstate <= l4;
+                 END IF;
+      WHEN l4 => bal_nstate <= l5;
+      WHEN l5 => bal_nstate <= l6;
+      WHEN l6 => bal_nstate <= l6;
+                 IF node_response_bal.done = '1' THEN
+                   bal_nstate <= l7;
+                 END IF;
+      WHEN l7 => bal_nstate <= l8;
+      WHEN l8 => bal_nstate <= l8;
+                 IF node_response_bal.done = '1' THEN
+                   bal_nstate <= rotation_done;
+                   IF balcase = C THEN
+                     bal_nstate <= drcheck;
+                   END IF;
+                 END IF;
+
+      -- -----------------------------
+      -- --- Double Rotation Pause ---
+      -- -----------------------------
+      WHEN c_prep_wait => bal_nstate <= c_prep_wait;
+                          IF node_response_bal.done = '1' THEN
+                            bal_nstate <= c_prep_done;
+                          END IF;
+      WHEN c_prep_done => nstate     <= l1;
+      WHEN d_prep_wait => bal_nstate <= d_prep_wait;
+                          IF node_response_bal.done = '1' THEN
+                            bal_nstate <= d_prep_done;
+                          END IF;
+      WHEN d_prep_done => nstate     <= r1;
+      WHEN drcheck     => bal_nstate <= r1;
+                          IF balcase = D THEN
+                            bal_nstate <= l1;
+                          END IF;
+      WHEN rotation_done => bal_nstate <= read_stack;
+      WHEN read_stack    => bal_nstate <= ulink;
+                            IF flag_end_of_stack = '1' THEN
+                              bal_nstate <= isdone;
+                            END IF;
+      WHEN isdone => bal_nstate <= idle;
+      WHEN OTHERS => bal_nstate <= idle;
+    END CASE;
+    
+    
+  END PROCESS;
+
+  insbal_reg : PROCESS
+  BEGIN
+    WAIT UNTIL clk'event AND clk = '1';
+
+  END PROCESS;
+  -- ----------------------------------------------------------
+  -- ------------------ ACCESS ARBITRATOR ---------------------
+  -- ----------------------------------------------------------
+
 END ARCHITECTURE;
