@@ -144,9 +144,20 @@ BEGIN
           node_request.cmd   <= wnode;
         WHEN wnew_done =>
           balancing_start_bit <= '1';
+        WHEN comparekey =>
+          IF to_integer(uns(key)) < to_integer(uns(nodeIn.key)) THEN
+            IF nodeIn.leftPtr /= nullPtr THEN
+              nowPtr <= nodeIn.leftPtr;
+            END IF;
+          ELSIF to_integer(uns(key)) > to_integer(uns(nodeIn.key)) THEN
+            IF nodeIn.rightPtr /= nullPtr THEN
+              nowPtr <= nodeIn.rightPtr;
+            END IF;
+          END IF;
         WHEN rnode_start=>
           node_request.start <= '1';
           node_request.cmd   <= rnode;
+          node_request.ptr   <= nowPtr;
         WHEN rnode_done =>
           nodeIn <= node_response.node;
         WHEN isdone =>
@@ -441,5 +452,7 @@ BEGIN
       node_response <= node_response_port;
     END IF;
   END PROCESS;
+
+  alloc_out.cmd <= malloc;
 
 END ARCHITECTURE;

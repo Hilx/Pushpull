@@ -83,6 +83,19 @@ PACKAGE dsl_pack IS
                                 read_stack,
                                 isdone);
 
+  TYPE lookup_state_type IS(idle,
+                            checkroot,
+                            rnode_start, rnode_wait, rnode_done,
+                            comparekey,
+                            isdone);
+
+  TYPE delete_all_state_type IS(idle, checkroot,
+                                rnode_start, rnode_wait, rnode_done,
+                                free_start, free_wait, free_done,
+                                check_node,
+                                read_stack, update_node, write_stack,
+                                isdone);
+
   TYPE balancing_case_type IS (A, B, C, D);
   TYPE missing_child_type IS(leftChild, rightChild);
 

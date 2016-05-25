@@ -7,125 +7,152 @@ USE work.dsl_pack.ALL;
 
 ENTITY dsl_delete_all IS
   PORT(
-    clk       : IN  STD_LOGIC;
-    rst       : IN  STD_LOGIC;
-    start     : IN  STD_LOGIC;
-    done      : OUT STD_LOGIC;
-    alloc_in  : IN  allocator_com_type;
-    alloc_out : OUT allocator_com_type;
-    mcin      : IN  mem_control_type;
-    mcout     : OUT mem_control_type
+    clk           : IN  STD_LOGIC;
+    rst           : IN  STD_LOGIC;
+    start         : IN  STD_LOGIC;
+    done          : OUT STD_LOGIC;
+    rootPtr_IN    : IN  STD_LOGIC_VECTOR(31 DOWNTO 0);
+    -- allocator
+    alloc_in      : IN  allocator_com_type;
+    alloc_out     : OUT allocator_com_type;
+    -- node access
+    node_request  : OUT node_access_comm_type;
+    node_response : IN  node_access_comm_type
     );
 END ENTITY dsl_delete_all;
 
 ARCHITECTURE syn_da OF dsl_delete_all IS
   ALIAS uns IS UNSIGNED;
-  SIGNAL state, nstate             : da_state_type;
-  SIGNAL hdBucket, nowPtr, nextPtr : slv(31 DOWNTO 0);
-  SIGNAL flag_last                 : STD_LOGIC;
-  SIGNAL entry_count               : INTEGER;
+  SIGNAL state, nstate   : da_state_type;
+  SIGNAL nodeIn          : tree_node_type;
+  SIGNAL mystack         : stack_type;
+  SIGNAL nowPtr, freePtr : slv(31 DOWNTO 0);
+  SIGNAL saddr           : INTEGER;
+  SIGNAL key_freed       : slv(31 DOWNTO 0);
+
 BEGIN
-  da_comb : PROCESS(state, start, alloc_in, mcin,
-                    -- hdBucket, 
-                    flag_last, nowPtr)
+  da_comb : PROCESS(state, start, alloc_in, node_response, saddr)
   BEGIN
     nstate <= idle;                     -- default
     CASE state IS
-      WHEN idle =>
-        nstate <= idle;
-        IF start = '1' THEN
-          nstate <= rbucket;
-        END IF;
-      WHEN rbucket =>
-        nstate <= rbucket_wait;
-        IF flag_last = '1' THEN
-          nstate <= isdone;
-        END IF;
-      WHEN rbucket_wait =>
-        nstate <= rbucket_wait;
-        IF mcin.done = '1' THEN
-          nstate <= rbucket_check;
-        END IF;
-      WHEN rbucket_check =>
-        nstate <= read_np;
-
-        IF mcin.rdata = nullPtr THEN    -- if hdBucket = nullptr
-          nstate <= rbucket;
-        END IF;
-        
-      WHEN read_np =>
-        nstate <= read_np_wait;
-        IF nowPtr = nullPtr THEN
-          nstate <= rbucket;
-        END IF;
-      WHEN read_np_wait =>
-        nstate <= read_np_wait;
-        IF mcin.done = '1' THEN
-          nstate <= free_node;
-        END IF;
-      WHEN free_node =>
-        nstate <= free_node_wait;
-      WHEN free_node_wait =>
-        nstate <= free_node_wait;
-        IF alloc_in.done = '1' THEN
-          nstate <= read_np;
-          IF nowPtr = nullPtr THEN
-            nstate <= rbucket;
-          END IF;
-        END IF;
-      WHEN isdone =>
-        nstate <= idle;
-      WHEN OTHERS => nstate <= idle;
+      WHEN idle => nstate <= idle;
+                   IF start = '1' THEN
+                     nstate <= checkroot;
+                   END IF;
+      WHEN checkroot => nstate <= rnode_start;
+                        IF rootPtr_IN = nullPtr
+                          -- AND flag_stack_empty = '1' THEN
+                          AND saddr = 0 THEN
+                          nstate <= isdone;
+                        END IF;
+      -- ------------------------------
+      -- ---------- READ NODE ---------
+      -- ------------------------------
+      WHEN rnode_start => nstate <= rnode_wait;
+      WHEN rnode_wait  => nstate <= rnode_wait;
+                          IF node_response.done = '1' THEN
+                            nstate <= rnode_done;
+                          END IF;
+      WHEN rnode_done => nstate <= check_node;
+      -- ------------------------------
+      -- ---------- FREE --------------
+      -- ------------------------------
+      WHEN free_start => nstate <= free_wait;
+      WHEN free_wait  => nstate <= free_wait;
+                         IF alloc_in.done = '1' THEN
+                           nstate <= free_done;
+                         END IF;
+      WHEN free_done => nstate <= read_stack;
+                        -- IF flag_stack_empty = '1' THEN
+                        IF saddr = 0 THEN
+                          nstate <= isdone;
+                        END IF;
+      -- ------------------------------
+      -- ---------- check node --------
+      -- ------------------------------
+      WHEN check_node => nstate <= write_stack;
+                         IF nodeIn.leftPtr = nullPtr
+                           AND nodeIn.rightPtr = nullPtr THEN
+                           nstate <= free_start;
+                         END IF;
+      -- ------------------------------
+      -- ---------- stacking ----------
+      -- ------------------------------
+      WHEN read_stack  => nstate <= update_node;
+      WHEN update_node => nstate <= check_node;
+      WHEN write_stack => nstate <= rnode_start;
+      -- ------------------------------
+      -- ------------------------------
+      -- ------------------------------
+      WHEN isdone      => nstate <= idle;
+      WHEN OTHERS      => nstate <= idle;
     END CASE;
   END PROCESS;
 
   da_reg : PROCESS
   BEGIN
     WAIT UNTIL clk'event AND clk = '1';
-    state           <= nstate;
-    alloc_out.start <= '0';
-    mcout.start     <= '0';
-    done            <= '0';
+    state              <= nstate;
+    alloc_out.start    <= '0';
+    node_request.start <= '0';
+    done               <= '0';
     IF rst = CONST_RESET THEN
       state <= idle;
     ELSE
       CASE state IS
         WHEN idle =>
-          flag_last     <= '0';
-          entry_count   <= 0;
-          alloc_out.cmd <= free;
-          mcout.cmd     <= mread;
-        WHEN rbucket =>
-          IF flag_last = '0' THEN
-            -- mem interaction
-            mcout.addr  <= slv(uns(MEM_BASE) + (to_unsigned(entry_count, 32) SLL ADDR_WORD_OFF_BIN));
-            mcout.start <= '1';
-            -- internal fsm control
-            entry_count <= entry_count + 1;
-          END IF;
-          IF entry_count = (TOTAL_HASH_ENTRY - 1) THEN
-            flag_last <= '1';
-          END IF;
-        WHEN rbucket_check =>
-          hdBucket <= mcin.rdata;
-          nowPtr   <= mcin.rdata;
-        WHEN read_np =>
-          mcout.addr  <= slv(uns(nowPtr));
-          mcout.start <= '1';
-        WHEN free_node =>
-          nextPtr         <= mcin.rdata;
-          -- free
+          saddr <= 0;
+        WHEN checkroot =>
+        -- ------------------------------
+        -- ---------- READ NODE ---------
+        -- ------------------------------
+        WHEN rnode_start =>
+          node_request.start <= '1';
+          node_request.ptr   <= nowPtr;
+          node_request.cmd   <= rnode;
+        WHEN rnode_done =>
+          nodeIn <= node_response.node;
+        -- ------------------------------
+        -- ---------- FREE --------------
+        -- ------------------------------
+        WHEN free_start =>
           alloc_out.start <= '1';
-          alloc_out.ptr   <= nowPtr;
-        WHEN free_node_wait =>          -- IS IT SAFE TO UPDATE NOWPTR NOW?
-          nowPtr <= nextPtr;    -- make sure pointer to be freed remain valid
-        WHEN isdone =>
-          done <= '1';
+          alloc_out.ptr   <= freePtr;
+        -- ------------------------------
+        -- ---------- check node --------
+        -- ------------------------------
+        WHEN check_node =>
+          IF nodeIn.leftPtr = nullPtr
+            AND nodeIn.rightPtr = nullPtr THEN
+            freePtr   <= nodeIn.ptr;
+            key_freed <= nodeIn.key;
+          END IF;
+        -- ------------------------------
+        -- ---------- stacking ----------
+        -- ------------------------------
+        WHEN read_stack =>
+          nodeIn <= mystack(saddr - 1);
+          saddr  <= saddr - 1;
+        WHEN update_node =>
+          IF to_integer(uns(key_freed)) < to_integer(uns(nodeIn.key)) THEN
+            nodeIn.leftPtr <= nullPtr;
+          ELSIF to_integer(uns(key_freed)) > to_integer(uns(nodeIn.key)) THEN
+            nodeIn.rightPtr <= nullPtr;
+          END IF;
+        WHEN write_stack =>
+          mystack(saddr) <= nodeIn;
+          saddr          <= saddr + 1;
+        -- ------------------------------
+        -- ------------------------------
+        -- ------------------------------
+        WHEN isdone => done <= '1';
         WHEN OTHERS => NULL;
       END CASE;
 
     END IF;  -- reset stuff
     
   END PROCESS;
+
+  alloc_out.cmd <= free;
 
 END ARCHITECTURE;
