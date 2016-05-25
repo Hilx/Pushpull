@@ -74,6 +74,7 @@ PACKAGE dsl_pack IS
                                 readchild_wait,
                                 cal_bal,
                                 check_bal,
+                                w_start, w_wait,
                                 r1, r2, r3, r4, r5, r6, r7, r8,
                                 l1, l2, l3, l4, l5, l6, l7, l8,
                                 c_prep_wait, c_prep_done,
@@ -84,5 +85,20 @@ PACKAGE dsl_pack IS
                                 isdone);
 
   TYPE balancing_case_type IS (A, B, C, D);
+  TYPE missing_child_type IS(leftChild, rightChild);
 
+  FUNCTION MAXIMUM(X : slv(31 DOWNTO 0), Y : (31 DOWNTO 0))
+    RETURN INTEGER IS
+    VARIABLE Z : INTEGER(31 DOWNTO 0);
+  BEGIN
+    IF to_integer(UNSIGNED(X)) > to_integer(UNSIGNED(Y)) THEN
+      Z <= to_integer(UNSIGNED(X));
+    ELSE
+      Z <= to_integer(UNSIGNED(Y));
+    END IF;
+    RETURN Z;
+  END FUNCTION MAXIMUM;
+
+  TYPE stack_type IS ARRAY (0 TO 31) OF tree_node_type;
+  
 END PACKAGE;
