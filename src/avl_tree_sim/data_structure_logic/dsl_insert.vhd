@@ -7,45 +7,42 @@ USE work.dsl_pack.ALL;
 
 ENTITY dsl_insert IS
   PORT(
-    clk           : IN  STD_LOGIC;
-    rst           : IN  STD_LOGIC;
+    clk                : IN  STD_LOGIC;
+    rst                : IN  STD_LOGIC;
     -- root
-    rootPtr_IN    : IN  STD_LOGIC_VECTOR(31 DOWNTO 0);
-    rootPtr_OUT   : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
+    rootPtr_IN         : IN  STD_LOGIC_VECTOR(31 DOWNTO 0);
+    rootPtr_OUT        : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
     -- control
-    start         : IN  STD_LOGIC;
-    done          : OUT STD_LOGIC;
+    start              : IN  STD_LOGIC;
+    done               : OUT STD_LOGIC;
     -- item
-    key           : IN  STD_LOGIC_VECTOR(31 DOWNTO 0);
-    data          : IN  STD_LOGIC_VECTOR(31 DOWNTO 0);
+    key                : IN  STD_LOGIC_VECTOR(31 DOWNTO 0);
+    data               : IN  STD_LOGIC_VECTOR(31 DOWNTO 0);
     -- node access
-    node_request  : OUT node_access_comm_type;
-    node_response : IN  node_access_comm_type;
+    node_request_port  : OUT node_access_comm_type;
+    node_response_port : IN  node_access_comm_type;
     -- allocator
-    alloc_in      : IN  allocator_com_type;
-    alloc_out     : OUT allocator_com_type
+    alloc_in           : IN  allocator_com_type;
+    alloc_out          : OUT allocator_com_type
     );
 END ENTITY dsl_insert;
 
 ARCHITECTURE syn_dsl_insert OF dsl_insert IS
   ALIAS uns IS UNSIGNED;
-  SIGNAL state, nstate                    : insert_state_type;
-  SIGNAL bal_state, bal_nstate            : insert_bal_state_type;
-  SIGNAL rootPtr, nowPtr                  : slv(31 DOWNTO 0);
-  SIGNAL balancing_done_bit               : STD_LOGIC;
-  SIGNAL balancing_start_bit              : STD_LOGIC;
-  SIGNAL node_request_bal                 : node_access_comm_type;
-  SIGNAL node_response_bal                : node_access_comm_type;
-  SIGNAL flag_end_of_stack                : STD_LOGIC;
-  SIGNAL balcase                          : balancing_case_type;
-  SIGNAL balance_factor                   : SIGNED(31 DOWNTO 0);
-  SIGNAL newNode, nodeIn                  : tree_node_type;
-  SIGNAL ancNode, left_child, right_child : tree_node_type;
-  SIGNAL isMissing                        : missing_child_type;
-  SIGNAL xNode, yNode, zNode              : tree_node_type;
-  SIGNAL updatedPtr                       : slv(31 DOWNTO 0);
-  SIGNAL saddr0, saddr1                   : INTEGER;
-  SIGNAL mystack                          : stack_type;
+  SIGNAL state, nstate                           : insert_state_type;
+  SIGNAL bal_state, bal_nstate                   : insert_bal_state_type;
+  SIGNAL rootPtr, nowPtr, updatedPtr             : slv(31 DOWNTO 0);
+  SIGNAL balancing_done_bit, balancing_start_bit : STD_LOGIC;
+  SIGNAL node_request, node_response             : node_access_comm_type;
+  SIGNAL node_request_bal, node_response_bal     : node_access_comm_type;
+  SIGNAL flag_end_of_stack                       : STD_LOGIC;
+  SIGNAL balcase                                 : balancing_case_type;
+  SIGNAL balance_factor                          : SIGNED(31 DOWNTO 0);
+  SIGNAL newNode, nodeIn, xNode, yNode, zNode    : tree_node_type;
+  SIGNAL ancNode, left_child, right_child        : tree_node_type;
+  SIGNAL isMissing                               : missing_child_type;
+  SIGNAL saddr0, saddr1                          : INTEGER;
+  SIGNAL mystack                                 : stack_type;
 BEGIN
   -- ----------------------------------------------------------
   -- --------------- INSERT SEARCH AND ALLOCATE ---------------
@@ -153,13 +150,11 @@ BEGIN
         WHEN rnode_done =>
           nodeIn <= node_response.node;
         WHEN isdone =>
-          done <= '1';
-          -- root ptr may be updated due to balancing as well
-          -- code will be added later!
+          done        <= '1';
+          rootPtr_OUT <= updatedPtr;
           IF rootPtr_IN = nullPtr THEN
             rootPtr_OUT <= newNode.ptr;
           END IF;
-          
         WHEN OTHERS => NULL;
       END CASE;
       
@@ -248,7 +243,6 @@ BEGIN
                      bal_nstate <= drcheck;
                    END IF;
                  END IF;
-
       -- -----------------------------
       -- --- Double Rotation Pause ---
       -- -----------------------------
@@ -388,6 +382,19 @@ BEGIN
             xNode.height   <= ancNode.height;
             zNode          <= right_child;
           END IF;
+        -- -----------------------------
+        -- ------ RIGHT ROTATION -------
+        -- -----------------------------
+        WHEN r1 => NULL;                -- FOR NOW
+
+        -- -----------------------------
+        -- ------ LEFT ROTATION --------
+        -- -----------------------------
+        WHEN l1 => NULL;                -- FOR NOW
+
+        -- -----------------------------
+        -- --------- READ STACK --------
+        -- -----------------------------  
         WHEN read_stack =>
           ancNode <= mystack(saddr1-1);
           saddr1  <= saddr1 - 1;
@@ -402,5 +409,37 @@ BEGIN
   -- ----------------------------------------------------------
   -- ------------------ ACCESS ARBITRATOR ---------------------
   -- ----------------------------------------------------------
+  acc_comb : PROCESS(state, node_request_bal, node_request)
+  BEGIN
+    node_request_port <= node_request;
+    IF state = balancing THEN
+      node_request_port <= node_request_bal;
+    END IF;
+    node_response.ptr               <= (OTHERS => '0');
+    node_response_bal.ptr           <= (OTHERS => '0');
+    node_response.cmd               <= rnode;
+    node_response_bal.cmd           <= rnode;
+    node_response.start             <= '0';
+    node_response_bal.start         <= '0';
+    node_response.done              <= '0';
+    node_response.done              <= '0';
+    node_response.node.ptr          <= (OTHERS => '0');
+    node_response.node.key          <= (OTHERS => '0');
+    node_response.node.data         <= (OTHERS => '0');
+    node_response.node.leftPtr      <= (OTHERS => '0');
+    node_response.node.rightPtr     <= (OTHERS => '0');
+    node_response.node.height       <= 0;
+    node_response_bal.node.ptr      <= (OTHERS => '0');
+    node_response_bal.node.key      <= (OTHERS => '0');
+    node_response_bal.node.data     <= (OTHERS => '0');
+    node_response_bal.node.leftPtr  <= (OTHERS => '0');
+    node_response_bal.node.rightPtr <= (OTHERS => '0');
+    node_response_bal.node.height   <= 0;
+    IF state = balancing THEN
+      node_response_bal <= node_response_port;
+    ELSE
+      node_response <= node_response_port;
+    END IF;
+  END PROCESS;
 
 END ARCHITECTURE;

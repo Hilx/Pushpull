@@ -39,7 +39,6 @@ PACKAGE dsl_pack IS
     height   : INTEGER;
   END RECORD;
 
-
   TYPE node_access_cmd_type IS (rnode, wnode);
 
   TYPE node_access_comm_type IS RECORD
