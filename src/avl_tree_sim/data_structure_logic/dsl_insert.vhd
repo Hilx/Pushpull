@@ -248,25 +248,36 @@ BEGIN
       -- ------ LEFT ROTATION --------
       -- -----------------------------
       WHEN l1 => bal_nstate <= l2;
-      WHEN l2 => bal_nstate <= l3;
-      WHEN l3 => bal_nstate <= l3;
-                 IF node_response_bal.done = '1' THEN
-                   bal_nstate <= l4;
+                 IF zNode.leftPtr = nullPtr THEN
+                   bal_nstate <= l3;
                  END IF;
-      WHEN l4 => bal_nstate <= l5;
+      WHEN l2 => bal_nstate <= l2;
+                 IF node_response_bal.done = '1' THEN
+                   bal_nstate <= l3;
+                 END IF;
+      WHEN l3 => bal_nstate <= l4;
+                 IF zNode.rightPtr = nullPtr THEN
+                   bal_nstate <= l6;
+                 END IF;
+      WHEN l4 => bal_nstate <= l4;
+                 IF node_response_bal.done = '1' THEN
+                   bal_nstate <= l5;
+                 END IF;
       WHEN l5 => bal_nstate <= l6;
-      WHEN l6 => bal_nstate <= l6;
-                 IF node_response_bal.done = '1' THEN
-                   bal_nstate <= l7;
-                 END IF;
+      WHEN l6 => bal_nstate <= l7;
       WHEN l7 => bal_nstate <= l8;
       WHEN l8 => bal_nstate <= l8;
                  IF node_response_bal.done = '1' THEN
-                   bal_nstate <= rotation_done;
-                   IF balcase = C THEN
-                     bal_nstate <= drcheck;
-                   END IF;
+                   bal_nstate <= l9
                  END IF;
+      WHEN l9  => bal_nstate <= l10;
+      WHEN l10 => bal_nstate <= l10;
+                  IF node_response_bal.done = '1' THEN
+                    bal_nstate <= rotation_done;
+                    IF balcase = C THEN
+                      bal_nstate <= drcheck;
+                    END IF;
+                  END IF;
       -- -----------------------------
       -- --- Double Rotation Pause ---
       -- -----------------------------
@@ -455,7 +466,7 @@ BEGIN
           IF zNode.leftPtr /= nullPtr THEN
             node_request_bal.start <= '1';
             node_request_bal.cmd   <= rnode;
-            node_request_bal.ptr = zNode.ptr;
+            node_request_bal.ptr = zNode.leftPtr;
           ELSE
             aNode.height <= 0;
             aNode.ptr    <= nullPtr;
@@ -502,8 +513,54 @@ BEGIN
         -- -----------------------------
         -- ------ LEFT ROTATION --------
         -- -----------------------------
-        WHEN l1 => NULL;                -- FOR NOW
+        WHEN l1 =>
+          IF zNode.leftPtr /= nullPtr THEN
+            node_request_bal.start <= '1';
+            node_request_bal.cmd   <= rnode;
+            node_request_bal.ptr = zNode.leftPtr;
+          ELSE
+            aNode.height <= 0;
+            aNode.ptr    <= nullPtr;
+          END IF;
+        WHEN l3 =>
+          IF zNode.leftPtr /= nullPtr THEN
+            aNode <= node_response_bal.node;
+          END IF;
+          IF zNode.rightPtr /= nullPtr THEN
+            node_response_bal.start <= '1';
+            node_response_bal.cmd   <= rnode;
+            node_response_bal.ptr   <= zNode.rightPtr;
+          ELSE
+            bNode.height <= 0;
+            bNode.ptr    <= nullPtr;
+          END IF;
+        WHEN l5 =>
+          IF zNode.rightPtr /= nullPtr THEN
+            bNode <= node_response_bal.node;
+          END IF;
+        WHEN l6 =>                      -- ROTATION STUFF
+          yNode.ptr      <= zNode.ptr;
+          yNode.rightPtr <= zNode.rightPtr;
+          yNode.key      <= zNode.key;
+          yNode.data     <= zNode.data;
 
+          yNode.leftPtr  <= xNode.ptr;
+          xNode.rightPtr <= aNode.ptr;
+          yNode.height   <= MAXIMUM(wNode.height, aNode.height)+1;
+          xNode.height   <= MAXIMUM(xNode.height, bNode.height)+1;
+        WHEN l7 =>
+          node_request_bal.start <= '1';
+          node_request_bal.cmd   <= wnode;
+          node_request_bal.ptr   <= xNode.ptr;
+          node_request_bal.node  <= xNode;
+        WHEN l8 =>                      -- wait
+        WHEN l9 =>
+          node_request_bal.start <= '1';
+          node_request_bal.cmd   <= wnode;
+          node_request_bal.ptr   <= yNode.ptr;
+          node_request_bal.node  <= yNode;
+          updatedPtr             <= yNode.ptr;
+          updatedNode            <= yNode;
         -- -----------------------------
         -- --------- READ STACK --------
         -- -----------------------------  
