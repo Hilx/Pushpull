@@ -1,7 +1,7 @@
 LIBRARY ieee;
 USE ieee.std_logic_1164.ALL;
 USE ieee.numeric_std.ALL;
-USE work.tb_pack_v1.ALL;
+USE work.tb_pack_v2.ALL;
 
 ENTITY block_ram IS
   PORT(

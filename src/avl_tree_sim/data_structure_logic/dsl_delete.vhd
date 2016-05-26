@@ -4,6 +4,7 @@ USE ieee.numeric_std.ALL;
 USE work.config_pack.ALL;
 USE work.malloc_pack.ALL;
 USE work.dsl_pack.ALL;
+USE work.dsl_pack_func.ALL;
 
 ENTITY dsl_delete IS
   PORT(

@@ -4,6 +4,7 @@ USE ieee.numeric_std.ALL;
 USE work.config_pack.ALL;
 USE work.malloc_pack.ALL;
 USE work.dsl_pack.ALL;
+USE work.dsl_pack_func.ALL;
 
 ENTITY dsl_delete_all IS
   PORT(
@@ -23,7 +24,7 @@ END ENTITY dsl_delete_all;
 
 ARCHITECTURE syn_da OF dsl_delete_all IS
   ALIAS uns IS UNSIGNED;
-  SIGNAL state, nstate   : da_state_type;
+  SIGNAL state, nstate   : delete_all_state_type;
   SIGNAL nodeIn          : tree_node_type;
   SIGNAL mystack         : stack_type;
   SIGNAL nowPtr, freePtr : slv(31 DOWNTO 0);
@@ -31,7 +32,7 @@ ARCHITECTURE syn_da OF dsl_delete_all IS
   SIGNAL key_freed       : slv(31 DOWNTO 0);
 
 BEGIN
-  da_comb : PROCESS(state, start, alloc_in, node_response, saddr)
+  da_comb : PROCESS(state, start, alloc_in, node_response, saddr, rootPtr_IN, nodeIn)
   BEGIN
     nstate <= idle;                     -- default
     CASE state IS

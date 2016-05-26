@@ -71,7 +71,7 @@ PACKAGE dsl_pack IS
                              alloc_start, alloc_wait, alloc_done,
                              wnew_start, wnew_wait, wnew_done,
                              comparekey,
-                             balancing, write_stack,
+                             balancing,
                              isdone);
 
   TYPE insert_bal_state_type IS(idle,
@@ -110,4 +110,3 @@ PACKAGE dsl_pack IS
   TYPE stack_type IS ARRAY (0 TO 31) OF tree_node_type;
   
 END PACKAGE;
-

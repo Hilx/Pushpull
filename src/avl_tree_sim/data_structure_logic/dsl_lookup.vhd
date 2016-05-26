@@ -40,7 +40,7 @@ BEGIN
                         END IF;
       WHEN rnode_start => nstate <= rnode_wait;
       WHEN rnode_wait  => nstate <= rnode_wait;
-                          IF node_response.done = '1' THEN
+                          IF node_response_port.done = '1' THEN
                             nstate <= rnode_done;
                           END IF;
       WHEN rnode_done => nstate <= comparekey;

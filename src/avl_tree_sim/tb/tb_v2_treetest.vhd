@@ -85,7 +85,7 @@ BEGIN
   -- let's fake one!
   memdone : PROCESS
   BEGIN
-    WAIT UNTIL clk'EVENT AND clk = '1';
+    WAIT UNTIL clk'event AND clk = '1';
     ram_done_i <= '0';                  -- done bit is usually 0
     fake_it    <= 0;
     --IF ram_we = '1' THEN
@@ -142,7 +142,7 @@ BEGIN
     VARIABLE outline : LINE;
     VARIABLE out_int : slv(31 DOWNTO 0);
   BEGIN
-    WAIT UNTIL clk'EVENT AND clk = '1';
+    WAIT UNTIL clk'event AND clk = '1';
 
     tb_state      <= tb_nstate;
     dsa_req.start <= '0';

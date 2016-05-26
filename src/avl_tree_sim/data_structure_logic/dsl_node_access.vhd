@@ -128,7 +128,7 @@ BEGIN
                         mcout.wdata <= request.node.rightPtr;
         WHEN w2start => mcout.start <= '1';  -- starts writing height
                         mcout.addr  <= slv(uns(request.ptr) + HEIGHT_OFFSET);
-                        mcout.wdata <= request.node.height;
+                        mcout.wdata <= slv(to_unsigned(request.node.height, 32));
         WHEN w3start => mcout.start <= '1';  -- starts writing key
                         mcout.addr  <= slv(uns(request.ptr) + KEY_OFFSET);
                         mcout.wdata <= request.node.key;

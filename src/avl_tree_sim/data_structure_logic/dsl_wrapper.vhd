@@ -78,8 +78,8 @@ BEGIN
     start_bit.delete     <= '0';
     start_bit.lookup     <= '0';
     start_bit.delete_all <= '0';
-    start_bit.init_hash  <= '0';
-    dsl_out_i.done       <= '0';
+
+    dsl_out_i.done <= '0';
     -- dsl_out_i.data       <= x"7FFF0000";        -- indicating not looking up
     IF rst = CONST_RESET THEN
       dsl_state      <= idle;
@@ -134,10 +134,10 @@ BEGIN
   node_acc_init.ptr           <= (OTHERS => '0');
   node_acc_init.node.ptr      <= (OTHERS => '0');
   alloc_acc_init.start        <= '0';
-  alloc_acc_init.cmd          <= alloc;
+  alloc_acc_init.cmd          <= malloc;
   alloc_acc_init.ptr          <= (OTHERS => '0');
   alloc_acc_init.done         <= '0';
-  parti0 : PROCESS(dsl_in.cmd,
+  parti0 : PROCESS(dsl_in,
                    node_response_wire, alloc_in,
                    node_request_insert, alloc_request_insert,
                    node_request_delete, alloc_request_delete,
@@ -165,12 +165,13 @@ BEGIN
     ELSIF dsl_in.cmd = delete THEN
       node_request_wire    <= node_request_delete;
       node_response_delete <= node_response_wire;
-      alloc_out            <= alloc_result_delete;
+      alloc_out            <= alloc_request_delete;
       alloc_result_delete  <= alloc_in;
     ELSIF dsl_in.cmd = delete_all THEN
       node_request_wire        <= node_request_delete_all;
       node_response_delete_all <= node_response_wire;
       alloc_result_delete_all  <= alloc_in;
+      alloc_out                <= alloc_request_delete_all;
     END IF;
 
   END PROCESS;
@@ -226,7 +227,7 @@ BEGIN
       node_request_port  => node_request_delete,
       node_response_port => node_response_delete,
       alloc_in           => alloc_result_delete,
-      alloc_out          => alloc_response_delete
+      alloc_out          => alloc_request_delete
       );
   da0 : ENTITY dsl_delete_all
     PORT MAP(
