@@ -93,7 +93,7 @@ BEGIN
   BEGIN
     WAIT UNTIL clk'event AND clk = '1';
     state         <= nstate;
-    response.done <= '0';
+    out_i.done <= '0';
     mcout.start   <= '0';
 
     IF rst = CONST_RESET THEN
@@ -136,9 +136,9 @@ BEGIN
                         mcout.addr  <= slv(uns(request.ptr)+ DATA_OFFSET);
                         mcout.wdata <= request.node.data;
         -- done 
-        WHEN done => response.done <= '1';
+        WHEN done => out_i.done <= '1';
                      IF request.cmd = rnode THEN
-                       response.node.data <= mcin.rdata;
+                       out_i.node.data <= mcin.rdata;
                      END IF;
         WHEN OTHERS => NULL;
       END CASE;

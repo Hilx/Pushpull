@@ -66,7 +66,7 @@ BEGIN
       
       CASE init_state IS
         WHEN init_state_idle =>
-          currentNodePtr <= slv(uns(MEM_BASE) + uns(total_entry_offset));
+          currentNodePtr <= slv(uns(MEM_BASE));
           node_count     <= 0;
         WHEN init_state_compute =>
           nextNodePtr    := slv(uns(currentNodePtr) + uns(MEM_BLOCK_SIZE));

@@ -101,7 +101,7 @@ BEGIN
             hdList <= argu.ptr;
           END IF;
         WHEN mmu_state_init =>          -- assign initial hdList address
-          hdList <= slv(uns(MEM_BASE)+uns(total_entry_offset));
+          hdList <= slv(uns(MEM_BASE));
         WHEN OTHERS => NULL;
       END CASE;
     END IF;  -- reset or not

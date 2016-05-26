@@ -45,6 +45,8 @@ ARCHITECTURE syn_dsl_insert OF dsl_insert IS
   SIGNAL saddr0, saddr1                                : INTEGER;
   SIGNAL mystack                                       : stack_type;
   SIGNAL aNode, bNode, wwNode                          : tree_node_type;
+signal returnPtr : slv(31 downto 0);
+signal flag_bal_mode : std_logic;
 BEGIN
   -- ----------------------------------------------------------
   -- --------------- INSERT SEARCH AND ALLOCATE ---------------
@@ -115,13 +117,15 @@ BEGIN
     done                <= '0';
     alloc_out.start     <= '0';
     node_request.start  <= '0';
-    balancing_start_bit <= '1';
+    balancing_start_bit <= '0';
+
     IF rst = CONST_RESET THEN
       state <= idle;
     ELSE
       CASE state IS
         WHEN idle =>
           saddr0 <= 0;
+flag_bal_mode <= '0';
         WHEN checkroot =>
           rootPtr          <= rootPtr_IN;
           nowPtr           <= rootPtr_IN;
@@ -144,7 +148,9 @@ BEGIN
           node_request.start <= '1';
           node_request.cmd   <= wnode;
         WHEN wnew_done =>
+	if rootPtr_IN /= nullPtr then
           balancing_start_bit <= '1';
+end if;
         WHEN comparekey =>
           IF to_integer(uns(key)) < to_integer(uns(nodeIn.key)) THEN
             IF nodeIn.leftPtr /= nullPtr THEN
@@ -155,6 +161,8 @@ BEGIN
               nowPtr <= nodeIn.rightPtr;
             END IF;
           END IF;
+when balancing =>
+flag_bal_mode <= '1';
         WHEN rnode_start=>
           node_request.start <= '1';
           node_request.cmd   <= rnode;
@@ -163,10 +171,12 @@ BEGIN
           nodeIn <= node_response.node;
         WHEN isdone =>
           done        <= '1';
-          rootPtr_OUT <= updatedPtr;
+          rootPtr_OUT <= rootPtr_IN;
           IF rootPtr_IN = nullPtr THEN
             rootPtr_OUT <= newNode.ptr;
-          END IF;
+          elsif flag_bal_mode = '1' then
+            rootPtr_OUT <= returnPtr;
+          end if;
         WHEN OTHERS => NULL;
       END CASE;
       
@@ -179,7 +189,7 @@ BEGIN
   -- ----------------------------------------------------------
   insbal_comb : PROCESS(bal_state, balancing_start_bit, balcase,
                         key, left_child, right_child, saddr1,
-                        balance_factor, zNode,
+                        balance_factor, zNode, isMissing, ancNode,
                         node_response_bal)
     VARIABLE aNode_v, bNode_v : tree_node_type;
   BEGIN
@@ -189,7 +199,12 @@ BEGIN
                    IF balancing_start_bit = '1' THEN
                      bal_nstate <= ulink;
                    END IF;
-      WHEN ulink          => bal_nstate <= readchild_wait;
+      WHEN ulink          =>    bal_nstate <= cal_bal;
+	if (isMissing = leftChild and ancNode.leftPtr /= nullPtr)
+or (isMissing = leftChild and ancNode.rightPtr /= nullPtr) then
+	bal_nstate <= readchild_wait;
+	end if;
+			     
       WHEN readchild_wait => bal_nstate <= readchild_wait;
                              IF node_response_bal.done = '1' THEN
                                bal_nstate <= cal_bal;
@@ -317,6 +332,9 @@ BEGIN
                               bal_nstate <= isdone;
                             END IF;
       WHEN read_stack => bal_nstate <= ulink;
+			 if saddr1 = 0 then
+				bal_nstate <= isdone;
+end if;
       WHEN isdone     => bal_nstate <= idle;
       WHEN OTHERS     => bal_nstate <= idle;
     END CASE;
@@ -336,7 +354,7 @@ BEGIN
         WHEN idle =>
           ancNode     <= NodeIn;
           saddr1      <= saddr0;
-          updatedPtr  <= newNode.ptr;
+	  updatedPtr  <= newNode.ptr;
           updatedNode <= newNode;
         WHEN ulink =>
           IF to_integer(uns(key)) < to_integer(uns(ancNode.key)) THEN
@@ -411,6 +429,8 @@ BEGIN
           node_request_bal.ptr   <= ancNode.ptr;
           node_request_bal.node  <= ancNode;
           node_request_bal.cmd   <= wnode;
+      	  --?
+	  returnPtr <= ancNode.ptr;
         WHEN c_prep_sec=>
           -- LEFT ROTATE
           xNode <= left_child;
@@ -475,9 +495,9 @@ BEGIN
             aNode <= node_response_bal.node;
           END IF;
           IF zNode.rightPtr /= nullPtr THEN
-            node_response_bal.start <= '1';
-            node_response_bal.cmd   <= rnode;
-            node_response_bal.ptr   <= zNode.rightPtr;
+            node_request_bal.start <= '1';
+            node_request_bal.cmd   <= rnode;
+            node_request_bal.ptr   <= zNode.rightPtr;
           ELSE
             bNode.height <= 0;
             bNode.ptr    <= nullPtr;
@@ -509,6 +529,7 @@ BEGIN
           node_request_bal.node  <= xNode;
           updatedPtr             <= xNode.ptr;
           updatedNode            <= xNode;
+returnPtr <= xNode.ptr;
         -- -----------------------------
         -- ------ LEFT ROTATION --------
         -- -----------------------------
@@ -526,9 +547,9 @@ BEGIN
             aNode <= node_response_bal.node;
           END IF;
           IF zNode.rightPtr /= nullPtr THEN
-            node_response_bal.start <= '1';
-            node_response_bal.cmd   <= rnode;
-            node_response_bal.ptr   <= zNode.rightPtr;
+            node_request_bal.start <= '1';
+            node_request_bal.cmd   <= rnode;
+            node_request_bal.ptr   <= zNode.rightPtr;
           ELSE
             bNode.height <= 0;
             bNode.ptr    <= nullPtr;
@@ -560,12 +581,15 @@ BEGIN
           node_request_bal.node  <= yNode;
           updatedPtr             <= yNode.ptr;
           updatedNode            <= yNode;
+	  returnPtr<= yNode.ptr;
         -- -----------------------------
         -- --------- READ STACK --------
         -- -----------------------------  
         WHEN read_stack =>
+	if saddr1 /= 0 then
           ancNode <= mystack(saddr1-1);
           saddr1  <= saddr1 - 1;
+	end if;
         WHEN isdone => balancing_done_bit <= '1';
         WHEN OTHERS => NULL;
       END CASE;
