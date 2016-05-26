@@ -18,7 +18,9 @@ ENTITY dsl_node_access IS
 END ENTITY;
 
 ARCHITECTURE syn_dsl_node_access OF dsl_node_access IS
+  ALIAS uns IS UNSIGNED;
   SIGNAL state, nstate : node_access_state_type;
+  SIGNAL out_i         : node_access_comm_type;
 BEGIN
   na_comb : PROCESS(request, mcin, state)
   BEGIN
@@ -44,8 +46,19 @@ BEGIN
       WHEN r2start => nstate <= r2wait;
       WHEN r2wait  => nstate <= r2wait;
                       IF mcin.done = '1' THEN
+                        nstate <= r3start;
+                      END IF;
+      WHEN r3start => nstate <= r3wait;
+      WHEN r3wait  => nstate <= r3wait;
+                      IF mcin.done = '1' THEN
+                        nstate <= r4start;
+                      END IF;
+      WHEN r4start => nstate <= r4wait;
+      WHEN r4wait  => nstate <= r4wait;
+                      IF mcin.done = '1' THEN
                         nstate <= done;
                       END IF;
+                      
       WHEN w0start => nstate <= w0wait;
       WHEN w0wait  => nstate <= w0wait;
                       IF mcin.done = '1' THEN
@@ -58,6 +71,16 @@ BEGIN
                       END IF;
       WHEN w2start => nstate <= w2wait;
       WHEN w2wait  => nstate <= w2wait;
+                      IF mcin.done = '1' THEN
+                        nstate <= w3start;
+                      END IF;
+      WHEN w3start => nstate <= w3wait;
+      WHEN w3wait  => nstate <= w3wait;
+                      IF mcin.done = '1' THEN
+                        nstate <= w4start;
+                      END IF;
+      WHEN w4start => nstate <= w4wait;
+      WHEN w4wait  => nstate <= w4wait;
                       IF mcin.done = '1' THEN
                         nstate <= done;
                       END IF;
@@ -78,29 +101,40 @@ BEGIN
     ELSE
       CASE state IS
         -- read node
-        WHEN r0start => mcout.cmd <= mread;
+        WHEN r0start => mcout.cmd <= mread;   -- starts reading left pointer
                         mcout.start <= '1';
-                        mcout.addr  <= request.ptr;
-        WHEN r1start => mcout.start <= '1';
-                        mcout.addr            <= slv(UNSIGNED(request.ptr) + KEY_OFFSET);
-                        response.node.ptr     <= request.ptr;
-                        response.node.nextPtr <= mcin.rdata;
-        WHEN r2start => mcout.start <= '1';
-                        mcout.addr        <= slv(UNSIGNED(request.ptr)+ DATA_OFFSET);
-                        response.node.key <= mcin.rdata;
-
+                        mcout.addr  <= slv(uns(request.ptr) + LEFT_OFFSET);
+        WHEN r1start => mcout.start <= '1';   -- starts reading right pointer
+                        mcout.addr         <= slv(uns(request.ptr) + RIGHT_OFFSET);
+                        out_i.node.ptr     <= request.ptr;
+                        out_i.node.leftPtr <= mcin.rdata;
+        WHEN r2start => mcout.start <= '1';   -- starts reading height
+                        mcout.addr          <= slv(uns(request.ptr)+ HEIGHT_OFFSET);
+                        out_i.node.rightPtr <= mcin.rdata;
+        WHEN r3start => mcout.start <= '1';   -- starts reading key
+                        mcout.addr        <= slv(uns(request.ptr) +KEY_OFFSET);
+                        out_i.node.height <= to_integer(uns(mcin.rdata));
+        WHEN r4start => mcout.start <= '1';   -- starts reading data;
+                        mcout.addr     <= slv(uns(request.ptr)+DATA_OFFSET);
+                        out_i.node.key <= mcin.rdata;
         -- write node
-        WHEN w0start => mcout.cmd <= mwrite;
+        WHEN w0start => mcout.cmd <= mwrite;  -- starts writing left pointer
                         mcout.start <= '1';
-                        mcout.addr  <= request.ptr;
-                        mcout.wdata <= request.node.nextPtr;
-        WHEN w1start => mcout.start <= '1';
-                        mcout.addr  <= slv(UNSIGNED(request.ptr) + KEY_OFFSET);
+                        mcout.addr  <= slv(uns(request.ptr) + LEFT_OFFSET);
+                        mcout.wdata <= request.node.leftPtr;
+                        
+        WHEN w1start => mcout.start <= '1';  -- starts writing right pointer
+                        mcout.addr  <= slv(uns(request.ptr) + RIGHT_OFFSET);
+                        mcout.wdata <= request.node.rightPtr;
+        WHEN w2start => mcout.start <= '1';  -- starts writing height
+                        mcout.addr  <= slv(uns(request.ptr) + HEIGHT_OFFSET);
+                        mcout.wdata <= request.node.height;
+        WHEN w3start => mcout.start <= '1';  -- starts writing key
+                        mcout.addr  <= slv(uns(request.ptr) + KEY_OFFSET);
                         mcout.wdata <= request.node.key;
-        WHEN w2start => mcout.start <= '1';
-                        mcout.addr  <= slv(UNSIGNED(request.ptr)+ DATA_OFFSET);
+        WHEN w4start => mcout.start <= '1';  -- starts writing data
+                        mcout.addr  <= slv(uns(request.ptr)+ DATA_OFFSET);
                         mcout.wdata <= request.node.data;
-
         -- done 
         WHEN done => response.done <= '1';
                      IF request.cmd = rnode THEN
@@ -111,5 +145,7 @@ BEGIN
     END IF;  -- about reset
     
   END PROCESS;
+
+  response <= out_i;
 
 END ARCHITECTURE;

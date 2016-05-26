@@ -47,15 +47,8 @@ ARCHITECTURE syn_dsa_top_wrapper OF dsa_top_wrapper IS
   
 BEGIN
   -- -------------------------------------
-  -- ---- total entry info ---------------
-  -- -------------------------------------
-  total_entry_offset <= slv(TO_UNSIGNED(TOTAL_HASH_ENTRY, 32) SLL ADDR_WORD_OFF_BIN);
-
-  -- -------------------------------------
   -- ----- Connections and Port Maps -----
   -- -------------------------------------  
-  --response      <= dsl_response;        -- returns corresp. data and done bit
-  --mmu_init_done <= mmu_init_done_i;
   alloc0 : ENTITY malloc_wrapper
     PORT MAP(
       clk                => clk,
@@ -75,6 +68,7 @@ BEGIN
     PORT MAP(
       clk       => clk,
       rst       => rst,
+      sys_init  => mmu_init_start_i,
       -- dsl communication
       dsl_in    => dsl_request,
       dsl_out   => dsl_response_i,
@@ -90,8 +84,6 @@ BEGIN
   -- -------------------------------------
   -- ----- MEMORY ACCESS ARBITRATOR ------
   -- -------------------------------------
-  -- memory access arbitrator fsm stuff
-  -- TYPE maa_state_type(maa_state_ds, maa_state_alloc);
   maa_fsm_comb : PROCESS(maa_state,
                          mmu_init_start_i, mmu_init_done_i,
                          alloc_cmd, alloc_resp)
@@ -143,13 +135,8 @@ BEGIN
     mmu_init_start_i  <= '0';
 
     CASE request.cmd IS
-      WHEN MALLOC_INIT =>
-        --mmu_init_start_i  <= request.start;
-        dsl_request.start <= '0';
-        mmu_init_start_i  <= request.start;
-      WHEN HASH_INIT => dsl_request.cmd <= init_hash;
-                        dsl_request.start <= request.start;
-                        mmu_init_start_i  <= '0';
+      WHEN MALLOC_INIT => dsl_request.start <= '0';
+                          mmu_init_start_i <= request.start;
       WHEN INS_ITEM => dsl_request.cmd <= insert;
                        dsl_request.start <= request.start;
                        mmu_init_start_i  <= '0';
