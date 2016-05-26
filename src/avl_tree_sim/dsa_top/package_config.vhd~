@@ -38,7 +38,7 @@ PACKAGE config_pack IS
   END RECORD;
 
   -- TOP LEVEL COMMAND CONSTANTS
-  CONSTANT MALLOC_INIT : slv(2 downto 0):= "000";
+
   CONSTANT INS_ITEM   : slv(2 DOWNTO 0) := "100";
   CONSTANT DEL_ITEM   : slv(2 DOWNTO 0) := "101";
   CONSTANT SER_ITEM   : slv(2 DOWNTO 0) := "110";

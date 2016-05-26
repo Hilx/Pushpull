@@ -7,12 +7,12 @@ USE work.ALL;
 USE work.config_pack.ALL;
 USE work.dsa_top_pack.ALL;
 USE work.dsl_pack.ALL;
-USE work.tb_pack_v1.ALL;                -- malloc-only testing tb package
+USE work.tb_pack_v2.ALL;                -- malloc-only testing tb package
 
-ENTITY tb_v1 IS
-END ENTITY tb_v1;
+ENTITY tb_v2 IS
+END ENTITY tb_v2;
 
-ARCHITECTURE behav_tb_v1 OF tb_v1 IS
+ARCHITECTURE behav_tb_v2 OF tb_v2 IS
   -- write to file
   FILE fout                  : TEXT OPEN write_mode IS "TEST_RESULT.txt";
   -- --------
@@ -85,7 +85,7 @@ BEGIN
   -- let's fake one!
   memdone : PROCESS
   BEGIN
-    WAIT UNTIL clk'event AND clk = '1';
+    WAIT UNTIL clk'EVENT AND clk = '1';
     ram_done_i <= '0';                  -- done bit is usually 0
     fake_it    <= 0;
     --IF ram_we = '1' THEN
@@ -142,7 +142,7 @@ BEGIN
     VARIABLE outline : LINE;
     VARIABLE out_int : slv(31 DOWNTO 0);
   BEGIN
-    WAIT UNTIL clk'event AND clk = '1';
+    WAIT UNTIL clk'EVENT AND clk = '1';
 
     tb_state      <= tb_nstate;
     dsa_req.start <= '0';
