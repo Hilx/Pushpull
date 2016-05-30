@@ -38,15 +38,15 @@ ARCHITECTURE syn_dsl_insert OF dsl_insert IS
   SIGNAL node_request_bal, node_response_bal           : node_access_comm_type;
   SIGNAL flag_end_of_stack                             : STD_LOGIC;
   SIGNAL balcase                                       : balancing_case_type;
-  SIGNAL balance_factor                                : SIGNED(31 DOWNTO 0);
+  SIGNAL balance_factor                                : INTEGER;
   SIGNAL newNode, nodeIn, xNode, yNode, zNode          : tree_node_type;
   SIGNAL ancNode, left_child, right_child, updatedNode : tree_node_type;
   SIGNAL isMissing                                     : missing_child_type;
   SIGNAL saddr0, saddr1                                : INTEGER;
   SIGNAL mystack                                       : stack_type;
   SIGNAL aNode, bNode, wwNode                          : tree_node_type;
-signal returnPtr : slv(31 downto 0);
-signal flag_bal_mode : std_logic;
+  SIGNAL returnPtr                                     : slv(31 DOWNTO 0);
+  SIGNAL flag_bal_mode                                 : STD_LOGIC;
 BEGIN
   -- ----------------------------------------------------------
   -- --------------- INSERT SEARCH AND ALLOCATE ---------------
@@ -124,8 +124,8 @@ BEGIN
     ELSE
       CASE state IS
         WHEN idle =>
-          saddr0 <= 0;
-flag_bal_mode <= '0';
+          saddr0        <= 0;
+          flag_bal_mode <= '0';
         WHEN checkroot =>
           rootPtr          <= rootPtr_IN;
           nowPtr           <= rootPtr_IN;
@@ -148,9 +148,9 @@ flag_bal_mode <= '0';
           node_request.start <= '1';
           node_request.cmd   <= wnode;
         WHEN wnew_done =>
-	if rootPtr_IN /= nullPtr then
-          balancing_start_bit <= '1';
-end if;
+          IF rootPtr_IN /= nullPtr THEN
+            balancing_start_bit <= '1';
+          END IF;
         WHEN comparekey =>
           IF to_integer(uns(key)) < to_integer(uns(nodeIn.key)) THEN
             IF nodeIn.leftPtr /= nullPtr THEN
@@ -161,8 +161,8 @@ end if;
               nowPtr <= nodeIn.rightPtr;
             END IF;
           END IF;
-when balancing =>
-flag_bal_mode <= '1';
+        WHEN balancing =>
+          flag_bal_mode <= '1';
         WHEN rnode_start=>
           node_request.start <= '1';
           node_request.cmd   <= rnode;
@@ -174,9 +174,9 @@ flag_bal_mode <= '1';
           rootPtr_OUT <= rootPtr_IN;
           IF rootPtr_IN = nullPtr THEN
             rootPtr_OUT <= newNode.ptr;
-          elsif flag_bal_mode = '1' then
+          ELSIF flag_bal_mode = '1' THEN
             rootPtr_OUT <= returnPtr;
-          end if;
+          END IF;
         WHEN OTHERS => NULL;
       END CASE;
       
@@ -199,12 +199,12 @@ flag_bal_mode <= '1';
                    IF balancing_start_bit = '1' THEN
                      bal_nstate <= ulink;
                    END IF;
-      WHEN ulink          =>    bal_nstate <= cal_bal;
-	if (isMissing = leftChild and ancNode.leftPtr /= nullPtr)
-or (isMissing = leftChild and ancNode.rightPtr /= nullPtr) then
-	bal_nstate <= readchild_wait;
-	end if;
-			     
+      WHEN ulink => bal_nstate <= cal_bal;
+                    IF (isMissing = leftChild AND ancNode.leftPtr /= nullPtr)
+                      OR (isMissing = rightChild AND ancNode.rightPtr /= nullPtr) THEN
+                      bal_nstate <= readchild_wait;
+                    END IF;
+                    
       WHEN readchild_wait => bal_nstate <= readchild_wait;
                              IF node_response_bal.done = '1' THEN
                                bal_nstate <= cal_bal;
@@ -332,16 +332,17 @@ or (isMissing = leftChild and ancNode.rightPtr /= nullPtr) then
                               bal_nstate <= isdone;
                             END IF;
       WHEN read_stack => bal_nstate <= ulink;
-			 if saddr1 = 0 then
-				bal_nstate <= isdone;
-end if;
-      WHEN isdone     => bal_nstate <= idle;
-      WHEN OTHERS     => bal_nstate <= idle;
+                         IF saddr1 = 0 THEN
+                           bal_nstate <= isdone;
+                         END IF;
+      WHEN isdone => bal_nstate <= idle;
+      WHEN OTHERS => bal_nstate <= idle;
     END CASE;
     
   END PROCESS;
 
   insbal_reg : PROCESS
+
   BEGIN
     WAIT UNTIL clk'event AND clk = '1';
     bal_state              <= bal_nstate;
@@ -354,7 +355,7 @@ end if;
         WHEN idle =>
           ancNode     <= NodeIn;
           saddr1      <= saddr0;
-	  updatedPtr  <= newNode.ptr;
+          updatedPtr  <= newNode.ptr;
           updatedNode <= newNode;
         WHEN ulink =>
           IF to_integer(uns(key)) < to_integer(uns(ancNode.key)) THEN
@@ -386,19 +387,21 @@ end if;
           END IF;
         WHEN cal_bal =>
           IF isMissing = rightChild THEN
+            ancNode.height <= MAXIMUM(left_child.height, right_child.height)+1;
+            balance_factor <= left_child.height - right_child.height;
             IF ancNode.rightPtr /= nullPtr THEN
-              right_child <= node_response_bal.node;
+              right_child    <= node_response_bal.node;
+              ancNode.height <= MAXIMUM(left_child.height, node_response_bal.node.height)+1;
+              balance_factor <= left_child.height - node_response_bal.node.height;
             END IF;
-            ancNode.height <= MAXIMUM(left_child.height,
-                                      node_response_bal.node.height)+1;
-            balance_factor <= to_signed(left_child.height - node_response_bal.node.height, 32);
           ELSE
+            ancNode.height <= MAXIMUM(left_child.height, right_child.height)+1;
+            balance_factor <= left_child.height - right_child.height;
             IF ancNode.leftPtr /= nullPtr THEN
-              left_child <= node_response_bal.node;
+              left_child     <= node_response_bal.node;
+              ancNode.height <= MAXIMUM(node_response_bal.node.height, right_child.height)+1;
+              balance_factor <= node_response_bal.node.height - right_child.height;
             END IF;
-            ancNode.height <= MAXIMUM(node_response_bal.node.height,
-                                      right_child.height)+1;
-            balance_factor <= to_signed(node_response_bal.node.height- right_child.height, 32);
           END IF;
         WHEN check_bal =>
           IF balance_factor > 1 AND key < left_child.key THEN       -- A
@@ -429,8 +432,10 @@ end if;
           node_request_bal.ptr   <= ancNode.ptr;
           node_request_bal.node  <= ancNode;
           node_request_bal.cmd   <= wnode;
-      	  --?
-	  returnPtr <= ancNode.ptr;
+          --?
+          returnPtr              <= ancNode.ptr;
+          updatedNode            <= ancNode;
+          updatedPtr             <= ancNode.ptr;
         WHEN c_prep_sec=>
           -- LEFT ROTATE
           xNode <= left_child;
@@ -514,14 +519,13 @@ end if;
 
           xNode.rightPtr <= yNode.ptr;
           yNode.leftPtr  <= bNode.ptr;
-          xNode.height   <= MAXIMUM(bNode.height, wwNode.height)+1;
-          yNode.height   <= MAXIMUM(aNode.height, yNode.height)+1;
+          yNode.height   <= MAXIMUM(bNode.height, wwNode.height)+1;
         WHEN r7 =>
+          xNode.height           <= MAXIMUM(aNode.height, yNode.height)+1;  -- updated height of node to be returned
           node_request_bal.start <= '1';
           node_request_bal.cmd   <= wnode;
           node_request_bal.ptr   <= yNode.ptr;
           node_request_bal.node  <= yNode;
-        WHEN r8 =>                      -- wait
         WHEN r9 =>
           node_request_bal.start <= '1';
           node_request_bal.cmd   <= wnode;
@@ -529,7 +533,7 @@ end if;
           node_request_bal.node  <= xNode;
           updatedPtr             <= xNode.ptr;
           updatedNode            <= xNode;
-returnPtr <= xNode.ptr;
+          returnPtr              <= xNode.ptr;
         -- -----------------------------
         -- ------ LEFT ROTATION --------
         -- -----------------------------
@@ -566,14 +570,13 @@ returnPtr <= xNode.ptr;
 
           yNode.leftPtr  <= xNode.ptr;
           xNode.rightPtr <= aNode.ptr;
-          yNode.height   <= MAXIMUM(wwNode.height, aNode.height)+1;
-          xNode.height   <= MAXIMUM(xNode.height, bNode.height)+1;
+          xNode.height   <= MAXIMUM(wwNode.height, aNode.height)+1;
         WHEN l7 =>
+          yNode.height           <= MAXIMUM(xNode.height, bNode.height)+1;  -- updated height of node to be returned
           node_request_bal.start <= '1';
           node_request_bal.cmd   <= wnode;
           node_request_bal.ptr   <= xNode.ptr;
           node_request_bal.node  <= xNode;
-        WHEN l8 =>                      -- wait
         WHEN l9 =>
           node_request_bal.start <= '1';
           node_request_bal.cmd   <= wnode;
@@ -581,15 +584,15 @@ returnPtr <= xNode.ptr;
           node_request_bal.node  <= yNode;
           updatedPtr             <= yNode.ptr;
           updatedNode            <= yNode;
-	  returnPtr<= yNode.ptr;
+          returnPtr              <= yNode.ptr;
         -- -----------------------------
         -- --------- READ STACK --------
-        -- -----------------------------  
+        -- -----------------------------
         WHEN read_stack =>
-	if saddr1 /= 0 then
-          ancNode <= mystack(saddr1-1);
-          saddr1  <= saddr1 - 1;
-	end if;
+          IF saddr1 /= 0 THEN
+            ancNode <= mystack(saddr1-1);
+            saddr1  <= saddr1 - 1;
+          END IF;
         WHEN isdone => balancing_done_bit <= '1';
         WHEN OTHERS => NULL;
       END CASE;
