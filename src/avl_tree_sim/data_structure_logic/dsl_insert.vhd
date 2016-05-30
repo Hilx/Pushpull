@@ -200,11 +200,16 @@ BEGIN
                      bal_nstate <= ulink;
                    END IF;
       WHEN ulink => bal_nstate <= cal_bal;
-                    IF (isMissing = leftChild AND ancNode.leftPtr /= nullPtr)
-                      OR (isMissing = rightChild AND ancNode.rightPtr /= nullPtr) THEN
-                      bal_nstate <= readchild_wait;
+                    IF ancNode.leftPtr /= nullPtr OR ancNode.rightPtr /= nullPtr THEN
+                      bal_nstate <= readchild_start;
                     END IF;
-                    
+
+      WHEN readchild_start =>
+        bal_nstate <= cal_bal;
+        IF (isMissing = leftChild AND ancNode.leftPtr /= nullPtr) OR (isMissing = rightChild AND ancNode.rightPtr /= nullPtr) THEN
+          bal_nstate <= readchild_wait;
+        END IF;
+        
       WHEN readchild_wait => bal_nstate <= readchild_wait;
                              IF node_response_bal.done = '1' THEN
                                bal_nstate <= cal_bal;
@@ -362,29 +367,40 @@ BEGIN
             ancNode.leftPtr <= updatedPtr;
             left_child      <= updatedNode;
             isMissing       <= rightChild;
-            -- reading missing child
-            IF ancNode.rightPtr /= nullPtr THEN
-              node_request_bal.start <= '1';
-              node_request_bal.ptr   <= ancNode.rightPtr;
-              node_request_bal.cmd   <= rnode;
-            ELSE
-              right_child.height <= 0;
-              right_child.ptr    <= nullPtr;
-            END IF;
+
+            right_child.height <= 0;
+            right_child.ptr    <= nullPtr;
           ELSE
             ancNode.rightPtr <= updatedPtr;
             right_child      <= updatedNode;
             isMissing        <= leftChild;
-            -- reading missing child
+
+            left_child.height <= 0;
+            left_child.ptr    <= nullPtr;
+          END IF;
+        WHEN readchild_start =>
+
+          IF to_integer(uns(key)) < to_integer(uns(ancNode.key)) THEN
+            IF ancNode.rightPtr /= nullPtr THEN
+              node_request_bal.start <= '1';
+              node_request_bal.ptr   <= ancNode.rightPtr;
+              node_request_bal.cmd   <= rnode;
+            --ELSE
+            --  right_child.height <= 0;
+            --  right_child.ptr    <= nullPtr;
+            END IF;
+          ELSE
+
             IF ancNode.leftPtr /= nullPtr THEN
               node_request_bal.start <= '1';
               node_request_bal.ptr   <= ancNode.leftPtr;
               node_request_bal.cmd   <= rnode;
-            ELSE
-              left_child.height <= 0;
-              left_child.ptr    <= nullPtr;
+            -- ELSE
+            --   left_child.height <= 0;
+            --    left_child.ptr    <= nullPtr;
             END IF;
           END IF;
+
         WHEN cal_bal =>
           IF isMissing = rightChild THEN
             ancNode.height <= MAXIMUM(left_child.height, right_child.height)+1;
@@ -471,7 +487,7 @@ BEGIN
             yNode.leftPtr  <= updatedPtr;  -- ROTATION RESULT
             yNode.rightPtr <= ancNode.rightPtr;
             yNode.height   <= ancNode.height;
-            zNode          <= left_child;
+            zNode          <= updatedNode;  -- left_child; -- has changed
             wwNode         <= right_child;
           ELSIF balcase = D THEN
             xNode.ptr      <= ancNode.ptr;
@@ -480,7 +496,7 @@ BEGIN
             xNode.leftPtr  <= ancNode.leftPtr;
             xNode.rightPtr <= updatedPtr;  -- ROTATION RESULT
             xNode.height   <= ancNode.height;
-            zNode          <= right_child;
+            zNode          <= updatedNode;  --right_child; -- has changed
             wwNode         <= left_child;
           END IF;
         -- -----------------------------
@@ -521,7 +537,8 @@ BEGIN
           yNode.leftPtr  <= bNode.ptr;
           yNode.height   <= MAXIMUM(bNode.height, wwNode.height)+1;
         WHEN r7 =>
-          xNode.height           <= MAXIMUM(aNode.height, yNode.height)+1;  -- updated height of node to be returned
+          xNode.height <= MAXIMUM(aNode.height, yNode.height)+1;  -- updated height of node to be returned
+
           node_request_bal.start <= '1';
           node_request_bal.cmd   <= wnode;
           node_request_bal.ptr   <= yNode.ptr;
@@ -571,12 +588,15 @@ BEGIN
           yNode.leftPtr  <= xNode.ptr;
           xNode.rightPtr <= aNode.ptr;
           xNode.height   <= MAXIMUM(wwNode.height, aNode.height)+1;
+          
         WHEN l7 =>
-          yNode.height           <= MAXIMUM(xNode.height, bNode.height)+1;  -- updated height of node to be returned
+          yNode.height <= MAXIMUM(xNode.height, bNode.height)+1;  -- updated height of node to be returned
+
           node_request_bal.start <= '1';
           node_request_bal.cmd   <= wnode;
           node_request_bal.ptr   <= xNode.ptr;
           node_request_bal.node  <= xNode;
+
         WHEN l9 =>
           node_request_bal.start <= '1';
           node_request_bal.cmd   <= wnode;
