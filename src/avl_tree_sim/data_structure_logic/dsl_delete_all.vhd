@@ -104,6 +104,7 @@ BEGIN
         WHEN idle =>
           saddr <= 0;
         WHEN checkroot =>
+          nowPtr <= rootPtr_IN;
         -- ------------------------------
         -- ---------- READ NODE ---------
         -- ------------------------------
@@ -143,6 +144,11 @@ BEGIN
         WHEN write_stack =>
           mystack(saddr) <= nodeIn;
           saddr          <= saddr + 1;
+          IF nodeIn.leftPtr /= nullPtr THEN
+            nowPtr <= nodeIn.leftPtr;
+          ELSIF nodeIn.rightPtr /= nullPtr THEN
+            nowPtr <= nodeIn.rightPtr;
+          END IF;
         -- ------------------------------
         -- ------------------------------
         -- ------------------------------

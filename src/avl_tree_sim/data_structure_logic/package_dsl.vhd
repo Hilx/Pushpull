@@ -76,7 +76,7 @@ PACKAGE dsl_pack IS
 
   TYPE insert_bal_state_type IS(idle,
                                 ulink,
-                                readchild_start,
+				readchild_start,
                                 readchild_wait,
                                 cal_bal,
                                 check_bal,
