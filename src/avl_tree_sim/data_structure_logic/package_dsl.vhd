@@ -76,7 +76,7 @@ PACKAGE dsl_pack IS
 
   TYPE insert_bal_state_type IS(idle,
                                 ulink,
-				readchild_start,
+                                readchild_start,
                                 readchild_wait,
                                 cal_bal,
                                 check_bal,
@@ -89,13 +89,43 @@ PACKAGE dsl_pack IS
                                 rotation_done,
                                 read_stack,
                                 isdone);
+  -- DELETE
+  TYPE delete_state_type IS (idle, checkroot,
+                             rnode_start, rnode_wait, rnode_done,
+                             alloc_start, alloc_wait, alloc_done,
+                             comparekey,
+                             keyfound,
+                             -- one child case
+                             read_onechild_wait, copydata,
+                             wout_start, wout_wait
+                             -- successor stuff
+                             succ_ser_compare, update_stack,
+                             balancing,
+                             write_stack,
+                             isdone);
 
+  TYPE delete_bal_state_type IS(idle,
+                                ulink,
+                                readchild_start,
+                                readchild_wait,
+                                cal_bal,
+                                check_bal,
+                                w_start, w_wait,
+                                r1, r2, r3, r4, r5, r6, r7, r8, r9, r10,
+                                l1, l2, l3, l4, l5, l6, l7, l8, l9, l10,
+                                c_prep_wait, c_prep_sec, c_prep_wait2, c_prep_done,
+                                d_prep_wait, d_prep_sec, d_prep_wait2, d_prep_done,
+                                drcheck,
+                                rotation_done,
+                                read_stack,
+                                isdone);
+  -- LOOKUP
   TYPE lookup_state_type IS(idle,
                             checkroot,
                             rnode_start, rnode_wait, rnode_done,
                             comparekey,
                             isdone);
-
+  -- DELETE ALL
   TYPE delete_all_state_type IS(idle, checkroot,
                                 rnode_start, rnode_wait, rnode_done,
                                 free_start, free_wait, free_done,
@@ -105,8 +135,6 @@ PACKAGE dsl_pack IS
 
   TYPE balancing_case_type IS (A, B, C, D);
   TYPE missing_child_type IS(leftChild, rightChild);
-
-
 
   TYPE stack_type IS ARRAY (0 TO 31) OF tree_node_type;
   
