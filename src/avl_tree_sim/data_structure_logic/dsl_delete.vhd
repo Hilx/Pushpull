@@ -30,7 +30,7 @@ END ENTITY dsl_delete;
 ARCHITECTURE syn_dsl_delete OF dsl_delete IS
   ALIAS uns IS UNSIGNED;
   SIGNAL freePtr, returnPtr, nowPtr, updatedPtr  : slv(31 DOWNTO 0);
-  SIGNAL succKey    ,keyRef                             : slv(31 DOWNTO 0);
+  SIGNAL succKey, keyRef                         : slv(31 DOWNTO 0);
   SIGNAL state, nstate                           : delete_state_type;
   SIGNAL bal_state, bal_nstate                   : delete_bal_state_type;
   SIGNAL node_request, node_request_bal          : node_access_comm_type;
@@ -48,7 +48,7 @@ ARCHITECTURE syn_dsl_delete OF dsl_delete IS
   SIGNAL isMissing                               : missing_child_type;
   SIGNAL ancNode, left_child, right_child        : tree_node_type;
   SIGNAL xNode, yNode, zNode, updatedNode        : tree_node_type;
-  signal height_left, height_right : integer;
+  SIGNAL height_left, height_right               : INTEGER;
 BEGIN
   delete_comb : PROCESS(state, start, rootPtr_IN, key,
                         node_response, alloc_in, nodeIn,
@@ -189,9 +189,9 @@ BEGIN
           ELSIF to_integer(uns(key)) = to_integer(uns(nodeIn.key)) THEN
             saddr2update <= saddr0;
             node2update  <= nodeIn;
-		if nodeIn.leftPtr /= nullPtr and nodeIn.rightPtr /= nullPtr then
-			flag_succ <= '1';
-                end if;
+            IF nodeIn.leftPtr /= nullPtr AND nodeIn.rightPtr /= nullPtr THEN
+              flag_succ <= '1';
+            END IF;
           END IF;
         -- ----------------------------
         -- ---------- STACK  ----------
@@ -243,7 +243,7 @@ BEGIN
                          node2update.leftPtr  <= node_response.node.leftPtr;
                          node2update.rightPtr <= node_response.node.rightPtr;
                          node2update.height   <= node_response.node.height;
-        WHEN wout_start => node_request.start<= '1';
+        WHEN wout_start => node_request.start <= '1';
                            node_request.ptr  <= node2update.ptr;
                            node_request.cmd  <= wnode;
                            node_request.node <= node2update;
@@ -349,13 +349,13 @@ BEGIN
                             bal_nstate <= chil_rnode4;
                           END IF;
       WHEN chil_rnode4   => bal_nstate <= chil_calc_bal;
-      WHEN chil_calc_bal => bal_nstate     <= chil_check_bal;
+      WHEN chil_calc_bal => bal_nstate <= chil_check_bal;
       WHEN chil_check_bal =>
-        bal_nstate <= r1;                   -- A                               
+        bal_nstate <= r1;               -- A                               
         IF chil_balcase = rightones THEN
-          bal_nstate <= l1;                 -- B
-          IF child_balance  >0 THEN
-            bal_nstate <= d_prep_wait;      -- D
+          bal_nstate <= l1;             -- B
+          IF child_balance > 0 THEN
+            bal_nstate <= d_prep_wait;  -- D
           END IF;
         ELSE
           IF child_balance < 0 THEN     -- C
@@ -807,7 +807,7 @@ BEGIN
         -- -----------------------------
         WHEN read_stack =>
           IF saddr1 /= 0 THEN
-            ancNode <= mystack(saddr1-1);           
+            ancNode <= mystack(saddr1-1);
             saddr1  <= saddr1 - 1;
           END IF;
         WHEN isdone => balancing_done_bit <= '1';
