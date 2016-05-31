@@ -110,6 +110,10 @@ PACKAGE dsl_pack IS
                                 readchild_wait,
                                 cal_bal,
                                 check_bal,
+                                -- new for delete
+                                chil_rnode1, chil_rnode2, chil_rnode3, chil_rnode4,
+                                chil_calc_bal, chil_check_bal,
+                                --
                                 w_start, w_wait,
                                 r1, r2, r3, r4, r5, r6, r7, r8, r9, r10,
                                 l1, l2, l3, l4, l5, l6, l7, l8, l9, l10,
@@ -135,6 +139,8 @@ PACKAGE dsl_pack IS
 
   TYPE balancing_case_type IS (A, B, C, D);
   TYPE missing_child_type IS(leftChild, rightChild);
+  TYPE free_case_type IS(no_child, one_child, both_child);
+  TYPE balancing_read_children_type IS(leftones, rightones);
 
   TYPE stack_type IS ARRAY (0 TO 31) OF tree_node_type;
   
