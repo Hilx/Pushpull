@@ -30,7 +30,7 @@ END ENTITY dsl_delete;
 ARCHITECTURE syn_dsl_delete OF dsl_delete IS
   ALIAS uns IS UNSIGNED;
   SIGNAL freePtr, returnPtr, nowPtr, updatedPtr  : slv(31 DOWNTO 0);
-  SIGNAL succKey                                 : slv(31 DOWNTO 0);
+  SIGNAL succKey    ,keyRef                             : slv(31 DOWNTO 0);
   SIGNAL state, nstate                           : delete_state_type;
   SIGNAL bal_state, bal_nstate                   : delete_bal_state_type;
   SIGNAL node_request, node_request_bal          : node_access_comm_type;
@@ -48,6 +48,7 @@ ARCHITECTURE syn_dsl_delete OF dsl_delete IS
   SIGNAL isMissing                               : missing_child_type;
   SIGNAL ancNode, left_child, right_child        : tree_node_type;
   SIGNAL xNode, yNode, zNode, updatedNode        : tree_node_type;
+  signal height_left, height_right : integer;
 BEGIN
   delete_comb : PROCESS(state, start, rootPtr_IN, key,
                         node_response, alloc_in, nodeIn,
@@ -57,7 +58,7 @@ BEGIN
     CASE state IS
       WHEN idle => nstate <= idle;
                    IF start = '1' THEN
-                     nstate <= checkroot,
+                     nstate <= checkroot;
                    END IF;
       WHEN checkroot => nstate <= rnode_start;
                         IF rootPtr_IN = nullPtr THEN
@@ -68,7 +69,7 @@ BEGIN
       -- ----------------------------
       WHEN rnode_start => nstate <= rnode_wait;
       WHEN rnode_wait  => nstate <= rnode_wait;
-                          IF node_response.done = '1 THEN
+                          IF node_response.done = '1' THEN
                             nstate <= rnode_done;
                           END IF;
       WHEN rnode_done => nstate <= comparekey;
@@ -234,12 +235,12 @@ BEGIN
         -- ------ ONE CHILD CASE ------
         -- ----------------------------                    
         WHEN copydata => freePtr <= node_response.node.ptr;
-                         node2update.key      <= node_response.key;
+                         node2update.key      <= node_response.node.key;
                          node2update.data     <= node_response.node.data;
                          node2update.leftPtr  <= node_response.node.leftPtr;
                          node2update.rightPtr <= node_response.node.rightPtr;
                          node2update.height   <= node_response.node.height;
-        WHEN wout_start => node_request.statr <= '1';
+        WHEN wout_start => node_request.start<= '1';
                            node_request.ptr  <= node2update.ptr;
                            node_request.cmd  <= wnode;
                            node_request.node <= node2update;
@@ -252,15 +253,15 @@ BEGIN
             balancing_start_bit <= '1';
             -- get ready for balancing
             -- no child
-            node2bal.ptr        <= nullPtr;
-            node2bal.height     <= 0;
-            node2bal.leftPtr    <= nullPtr;
-            node2bal.rightPtr   <= nullPtr;
-            node2bal.key        <= key;
+            node2out.ptr        <= nullPtr;
+            node2out.height     <= 0;
+            node2out.leftPtr    <= nullPtr;
+            node2out.rightPtr   <= nullPtr;
+            node2out.key        <= key;
             IF fcase = one_child THEN
-              node2bal <= node2update;
+              node2out <= node2update;
             ELSIF fcase = both_child THEN
-              node2bal.key <= succKey;
+              node2out.key <= succKey;
             END IF;
           END IF;
         WHEN balancing => flag_balancing <= '1';
@@ -284,7 +285,7 @@ BEGIN
   -- ------------------ BALANCING -----------------------------
   -- ----------------------------------------------------------
   delbal_comb : PROCESS(bal_state, balancing_start_bit, balcase,
-                        key, left_child, right_child, saddr1,
+                        left_child, right_child, saddr1,
                         balance_factor, zNode, isMissing, ancNode,
                         node_response_bal, chil_balcase, child_balance)
     VARIABLE aNode_v, bNode_v : tree_node_type;
@@ -345,17 +346,17 @@ BEGIN
                             bal_nstate <= chil_rnode4;
                           END IF;
       WHEN chil_rnode4   => bal_nstate <= chil_calc_bal;
-      WHEN chil_calc_bal => nstate     <= chil_check_bal;
+      WHEN chil_calc_bal => bal_nstate     <= chil_check_bal;
       WHEN chil_check_bal =>
-        nstate <= r1;                   -- A                               
+        bal_nstate <= r1;                   -- A                               
         IF chil_balcase = rightones THEN
-          nstate <= l1;                 -- B
-          IF child_balance THEN
-            nstate <= d_prep_wait;      -- D
+          bal_nstate <= l1;                 -- B
+          IF child_balance  >0 THEN
+            bal_nstate <= d_prep_wait;      -- D
           END IF;
         ELSE
           IF child_balance < 0 THEN     -- C
-            nstate <= c_prep_wait;
+            bal_nstate <= c_prep_wait;
           END IF;
         END IF;
       -- -----------------------------
@@ -598,7 +599,7 @@ BEGIN
             END IF;
           END IF;
         WHEN chil_rnode4 =>
-          hright_right <= node_response_bal.node.height;
+          height_right <= node_response_bal.node.height;
         WHEN chil_calc_bal =>
           child_balance <= height_left - height_right;
         WHEN chil_check_bal =>
@@ -803,8 +804,7 @@ BEGIN
         -- -----------------------------
         WHEN read_stack =>
           IF saddr1 /= 0 THEN
-            ancNode <= mystack(saddr1-1);
-            node_v  <= mystack(saddr1-1);
+            ancNode <= mystack(saddr1-1);           
             saddr1  <= saddr1 - 1;
           END IF;
         WHEN isdone => balancing_done_bit <= '1';

@@ -97,7 +97,7 @@ PACKAGE dsl_pack IS
                              keyfound,
                              -- one child case
                              read_onechild_wait, copydata,
-                             wout_start, wout_wait
+                             wout_start, wout_wait,
                              -- successor stuff
                              succ_ser_compare, update_stack,
                              balancing,
