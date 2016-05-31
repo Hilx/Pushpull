@@ -110,7 +110,7 @@ BEGIN
       -- -- FIND INORDER SUCCESSOR --
       -- ----------------------------
       WHEN succ_ser_compare => nstate <= write_stack;
-                               IF nodeIn.rightPtr = nullPtr THEN
+                               IF nodeIn.leftPtr = nullPtr THEN
                                  nstate <= update_stack;
                                END IF;
       WHEN update_stack       => nstate <= alloc_start;
@@ -183,12 +183,15 @@ BEGIN
               nowPtr <= nodeIn.leftPtr;
             END IF;
           ELSIF to_integer(uns(key)) > to_integer(uns(nodeIn.key)) THEN
-            IF nodeIn.rightPtr = nullPtr THEN
+            IF nodeIn.rightPtr /= nullPtr THEN
               nowPtr <= nodeIn.rightPtr;
             END IF;
           ELSIF to_integer(uns(key)) = to_integer(uns(nodeIn.key)) THEN
             saddr2update <= saddr0;
             node2update  <= nodeIn;
+		if nodeIn.leftPtr /= nullPtr and nodeIn.rightPtr /= nullPtr then
+			flag_succ <= '1';
+                end if;
           END IF;
         -- ----------------------------
         -- ---------- STACK  ----------
@@ -221,13 +224,13 @@ BEGIN
         -- -- FIND INORDER SUCCESSOR --
         -- ----------------------------
         WHEN succ_ser_compare =>
-          IF nodeIn.rightPtr = nullPtr THEN
+          IF nodeIn.leftPtr = nullPtr THEN
             freePtr          <= nodeIn.ptr;
             succKey          <= nodeIn.key;
             node2update.key  <= nodeIn.key;
             node2update.data <= nodeIn.data;
           ELSE
-            nowPtr <= nodeIn.rightPtr;
+            nowPtr <= nodeIn.leftPtr;
           END IF;
         WHEN update_stack =>
           mystack(saddr2update) <= node2update;
