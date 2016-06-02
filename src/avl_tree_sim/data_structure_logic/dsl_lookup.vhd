@@ -29,8 +29,8 @@ ARCHITECTURE dsl_lookup_syn OF dsl_lookup IS
   SIGNAL saddr         : INTEGER;
   SIGNAL mystack       : stack_type;
 BEGIN
-  lookup_comb : PROCESS(state, start, key, nodeIn, node_response_port, rootPtr_IN,
-                        nodeS, saddr, lookup_larger)
+  lookup_comb : PROCESS(state, start, key, nodeIn, node_response_port,
+                        rootPtr_IN, nodeS, saddr, lookup_larger)
   BEGIN
     nstate <= idle;
     CASE state IS
