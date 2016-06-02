@@ -11,6 +11,9 @@ ENTITY dsl_wrapper IS
     clk       : IN  STD_LOGIC;
     rst       : IN  STD_LOGIC;
     sys_init  : IN  STD_LOGIC;
+    -- root
+    root_in   : IN  STD_LOGIC_VECTOR(31 DOWNTO 0);
+    root_out  : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
     -- dsl communication
     dsl_in    : IN  dsl_com_in_type;
     dsl_out   : OUT dsl_com_out_type;
@@ -88,9 +91,9 @@ BEGIN
       dsl_out_i.data <= x"00000000";
     ELSE
       IF dsl_state = idle THEN
-        IF sys_init = '1' THEN          -- when memory allocator is initialised
-          rootPtr <= nullPtr;           -- initialised rootPtr reg to nullPtr
-        END IF;
+      -- IF sys_init = '1' THEN          -- when memory allocator is initialised
+      --rootPtr <= nullPtr;           -- initialised rootPtr reg to nullPtr
+      -- END IF;
       END IF;
       IF dsl_state = start THEN
         CASE dsl_in.cmd IS
@@ -105,6 +108,7 @@ BEGIN
       IF dsl_state = done THEN          -- feedback to outside
         dsl_out_i.done <= '1';          -- done bit
         IF dsl_in.cmd = lookup OR dsl_in.cmd = lookup_larger_cmd THEN
+          rootPtr <= root_in;           -- keep same root
           IF lookup_result.found = '1' THEN
             dsl_out_i.data <= lookup_result.data;
           ELSE
@@ -202,7 +206,7 @@ BEGIN
     PORT MAP(
       clk                => clk,
       rst                => rst,
-      rootPtr_IN         => rootPtr,
+      rootPtr_IN         => root_in,
       rootPtr_OUT        => rootPtr_from_insert,
       start              => start_bit.insert,
       done               => done_bit.insert,
@@ -217,7 +221,7 @@ BEGIN
     PORT MAP(
       clk                => clk,
       rst                => rst,
-      rootPtr_IN         => rootPtr,
+      rootPtr_IN         => root_in,
       lookup_larger      => flag_lookup_larger,
       start              => start_bit.lookup,
       done               => done_bit.lookup,
@@ -230,7 +234,7 @@ BEGIN
     PORT MAP(
       clk                => clk,
       rst                => rst,
-      rootPtr_IN         => rootPtr,
+      rootPtr_IN         => root_in,
       rootPtr_OUT        => rootPtr_from_delete,
       start              => start_bit.delete,
       done               => done_bit.delete,
@@ -246,13 +250,14 @@ BEGIN
       rst           => rst,
       start         => start_bit.delete_all,
       done          => done_bit.delete_all,
-      rootPtr_IN    => rootPtr,
+      rootPtr_IN    => root_in,
       alloc_in      => alloc_result_delete_all,
       alloc_out     => alloc_request_delete_all,
       node_request  => node_request_delete_all,
       node_response => node_response_delete_all
       );  
 
-  dsl_out <= dsl_out_i;
+  dsl_out  <= dsl_out_i;
+  root_out <= rootPtr;
 
 END ARCHITECTURE syn_dsl_wrapper;

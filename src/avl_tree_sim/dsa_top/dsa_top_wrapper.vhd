@@ -4,8 +4,8 @@ USE ieee.numeric_std.ALL;
 USE work.ALL;
 USE work.config_pack.ALL;
 USE work.dsa_top_pack.ALL;
-USE work.malloc_pack.ALL;               -- memory management package
-USE work.dsl_pack.ALL;                  -- data structure logic package
+USE work.malloc_pack.ALL;
+USE work.dsl_pack.ALL;
 
 ENTITY dsa_top_wrapper IS
   PORT(
@@ -39,16 +39,33 @@ ARCHITECTURE syn_dsa_top_wrapper OF dsa_top_wrapper IS
   -- FOR TESTING MALLOC NOW, translator signals
   SIGNAL tra_state, tra_nstate : tra_state_type;
 
-  SIGNAL total_entry_offset : STD_LOGIC_VECTOR(31 DOWNTO 0);
+  SIGNAL total_entry_offset : slv(31 DOWNTO 0);
 
   SIGNAL mmu_init_start_i : STD_LOGIC;
 
   SIGNAL dsl_response_i : dsl_com_out_type;
+
+  -- multiple roots
+  SIGNAL roots_we                    : STD_LOGIC;
+  SIGNAL roots_addr                  : slv(ROOTS_RAM_ADDR_BITS-1 DOWNTO 0);
+  SIGNAL roots_data_in, root_updated : slv(31 DOWNTO 0);
+  SIGNAL roots_data_out, root_stored : slv(31 DOWNTO 0);
+  SIGNAL root_state, root_nstate     : roots_update_state_type;
+  SIGNAL roots_addr_i                : INTEGER;
   
 BEGIN
   -- -------------------------------------
   -- ----- Connections and Port Maps -----
-  -- -------------------------------------  
+  -- -------------------------------------
+  rootsmem : ENTITY roots_ram
+    PORT MAP(
+      clk      => clk,
+      we       => roots_we,
+      address  => roots_addr,
+      data_in  => roots_data_in,
+      data_out => roots_data_out
+      );
+
   alloc0 : ENTITY malloc_wrapper
     PORT MAP(
       clk                => clk,
@@ -69,6 +86,9 @@ BEGIN
       clk       => clk,
       rst       => rst,
       sys_init  => mmu_init_start_i,
+      -- root
+      root_in   => root_stored,
+      root_out  => root_updated,
       -- dsl communication
       dsl_in    => dsl_request,
       dsl_out   => dsl_response_i,
@@ -157,11 +177,89 @@ BEGIN
                      mmu_init_start_i  <= '0';
     END CASE;
   END PROCESS;
+
+
+  -- -------------------------------------
+  -- ---------- ROOTS --------------------
+  -- -------------------------------------
+  rootfsm_comb : PROCESS(root_state, request, dsl_response_i, mmu_init_start_i)
+  BEGIN
+    root_nstate <= idle;
+    CASE root_state IS
+      WHEN idle => root_nstate <= idle;
+                   IF m mmu_init_start_i = '1' THEN
+                     root_nstate <= init_start;
+                   ELSIF request.start = '1' THEN
+                     root_nstate <= read_new;
+                   END IF;
+      WHEN read_new => nstate <= busy;
+      WHEN busy     => nstate <= busy;
+                       IF dsl_response_i.done = '1' THEN
+                         nstate <= new_in;
+                       END IF;
+      WHEN new_in     => nstate      <= write_out;
+      WHEN write_out  => nstate      <= idle;
+      -- initialisations
+      WHEN init_start => root_nstate <= init_w0;
+      WHEN init_w0    => root_nstate <= init_w1;
+      WHEN init_w1    => root_nstate <= init_w2;
+      WHEN init_w2    => root_nstate <= init_au;
+      WHEN init_au    => root_nstate <= init_w0;
+                         IF roots_addr_i = MAX_ROOTS_RAM_ADDR THEN
+                           root_nstate <= idle;
+                         END IF;
+      WHEN OTHERS => root_nstate <= idle;
+    END CASE;
+  END PROCESS;
+
+  rootfsm_reg : PROCESS()
+  BEGIN
+    WAIT UNTIL clk'event AND clk = '1';
+    root_state <= root_nstate;
+    roots_we   <= '0';
+    IF rst = CONST_RESET THEN
+      root_state <= idle;
+    ELSE
+
+      -- -------------------------------
+      -- BETTER WITH CASE STATEMENTS!!!!!!!!!!!!!
+      
+      IF root_state = idle THEN
+        roots_addr_i <= root_sel;
+      END IF;
+      IF root_state = read_new THEN
+        root_stored <= roots_data_out;
+      END IF;
+      IF root_state = new_in THEN
+        roots_data_in <= root_updated;
+      END IF;
+      IF root_state = write_out THEN
+        roots_we <= '1';
+      END IF;
+
+      -- roots initialisation (to nullPtrs)
+      IF root_state = init_start THEN
+        roots_addr_i  <= 0;
+        roots_data_in <= nullPtr;
+      END IF;
+      IF root_state = init_w0 THEN
+        roots_we <= '1';
+      END IF;
+      IF root_state = init_au AND roots_addr_i /= MAX_ROOTS_RAM_ADDR THEN
+        roots_addr_i <= roots_addr_i +1;
+      END IF;
+      
+    END IF;  -- if reset
+
+  END PROCESS;
+  roots_addr <= slv(to_unsigned(roots_addr_i), ROOTS_RAM_ADDR_BITS);
+  -- --------------------------------------
+
   dsl_request.key  <= request.key;
   dsl_request.data <= request.data;
 
   -- FOR TESTING
   PTR_OUT <= alloc_resp.ptr;
-  
+
 END ARCHITECTURE syn_dsa_top_wrapper;
 

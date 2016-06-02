@@ -21,4 +21,9 @@ PACKAGE dsa_top_pack IS
     start : STD_LOGIC;
   END RECORD;
 
+  -- roots stuff
+  TYPE roots_update_state_type IS(idle, read_new, busy, new_in, write_out,
+                                  init_start, init_w0, init_w1, init_w2, init_au);
+  CONSTANT MAX_ROOTS_RAM_ADDR  : INTEGER := 31;
+  CONSTANT ROOTS_RAM_ADDR_BITS : INTEGER := 5;
 END PACKAGE;
