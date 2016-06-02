@@ -43,5 +43,6 @@ PACKAGE config_pack IS
   CONSTANT DEL_ITEM    : slv(2 DOWNTO 0) := "101";
   CONSTANT SER_ITEM    : slv(2 DOWNTO 0) := "110";
   CONSTANT ALL_DELETE  : slv(2 DOWNTO 0) := "111";
+  CONSTANT LOOKUP_L    : slv(2 DOWNTO 0) := "011";
 
 END PACKAGE;

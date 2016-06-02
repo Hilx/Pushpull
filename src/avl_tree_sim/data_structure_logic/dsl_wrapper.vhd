@@ -45,6 +45,8 @@ ARCHITECTURE syn_dsl_wrapper OF dsl_wrapper IS
 
   -- rootPtr control
   SIGNAL rootPtr, rootPtr_from_insert, rootPtr_from_delete : slv(31 DOWNTO 0);
+
+  SIGNAL flag_lookup_larger : STD_LOGIC;
 BEGIN
   -- data structure logic overall control
   dsl_fsm_comb : PROCESS(dsl_state, dsl_in, done_bit)
@@ -92,16 +94,17 @@ BEGIN
       END IF;
       IF dsl_state = start THEN
         CASE dsl_in.cmd IS
-          WHEN insert     => start_bit.insert     <= '1';
-          WHEN delete     => start_bit.delete     <= '1';
-          WHEN lookup     => start_bit.lookup     <= '1';
-          WHEN delete_all => start_bit.delete_all <= '1';
-          WHEN OTHERS     => NULL;
+          WHEN insert            => start_bit.insert     <= '1';
+          WHEN delete            => start_bit.delete     <= '1';
+          WHEN lookup            => start_bit.lookup     <= '1';
+          WHEN lookup_larger_cmd => start_bit.lookup     <= '1';
+          WHEN delete_all        => start_bit.delete_all <= '1';
+          WHEN OTHERS            => NULL;
         END CASE;
       END IF;
       IF dsl_state = done THEN          -- feedback to outside
         dsl_out_i.done <= '1';          -- done bit
-        IF dsl_in.cmd = lookup THEN
+        IF dsl_in.cmd = lookup OR dsl_in.cmd = lookup_larger_cmd THEN
           IF lookup_result.found = '1' THEN
             dsl_out_i.data <= lookup_result.data;
           ELSE
@@ -154,6 +157,9 @@ BEGIN
     alloc_result_insert      <= alloc_acc_init;
     alloc_result_delete      <= alloc_acc_init;
     alloc_result_delete_all  <= alloc_acc_init;
+
+    flag_lookup_larger <= '0';
+
     IF dsl_in.cmd = insert THEN
       node_request_wire    <= node_request_insert;
       node_response_insert <= node_response_wire;
@@ -162,6 +168,10 @@ BEGIN
     ELSIF dsl_in.cmd = lookup THEN
       node_request_wire    <= node_request_lookup;
       node_response_lookup <= node_response_wire;
+    ELSIF dsl_in.cmd = lookup_larger_cmd THEN
+      node_request_wire    <= node_request_lookup;
+      node_response_lookup <= node_response_wire;
+      flag_lookup_larger   <= '1';
     ELSIF dsl_in.cmd = delete THEN
       node_request_wire    <= node_request_delete;
       node_response_delete <= node_response_wire;
@@ -208,6 +218,7 @@ BEGIN
       clk                => clk,
       rst                => rst,
       rootPtr_IN         => rootPtr,
+      lookup_larger      => flag_lookup_larger,
       start              => start_bit.lookup,
       done               => done_bit.lookup,
       key                => dsl_in.key,

@@ -9,6 +9,7 @@ ENTITY dsl_lookup IS
     clk                : IN  STD_LOGIC;
     rst                : IN  STD_LOGIC;
     rootPtr_IN         : IN  STD_LOGIC_VECTOR(31 DOWNTO 0);
+    lookup_larger      : IN  STD_LOGIC;
     -- control
     start              : IN  STD_LOGIC;
     done               : OUT STD_LOGIC;
@@ -23,10 +24,13 @@ END ENTITY dsl_lookup;
 ARCHITECTURE dsl_lookup_syn OF dsl_lookup IS
   ALIAS uns IS UNSIGNED;
   SIGNAL state, nstate : lookup_state_type;
-  SIGNAL nodeIn        : tree_node_type;
+  SIGNAL nodeIn, nodeS : tree_node_type;
   SIGNAL nowPtr        : slv(31 DOWNTO 0);
+  SIGNAL saddr         : INTEGER;
+  SIGNAL mystack       : stack_type;
 BEGIN
-  lookup_comb : PROCESS(state, start, key, nodeIn, node_response_port, rootPtr_IN)
+  lookup_comb : PROCESS(state, start, key, nodeIn, node_response_port, rootPtr_IN,
+                        nodeS, saddr, lookup_larger)
   BEGIN
     nstate <= idle;
     CASE state IS
@@ -57,6 +61,41 @@ BEGIN
             nstate <= isdone;           -- search ended, not found
           END IF;
         END IF;
+        IF lookup_larger = '1' THEN
+          nstate <= write_stack;
+          IF to_integer(uns(key)) = to_integer(uns(nodeIn.key)) THEN
+            nstate <= read_extra_node;  -- find smallest in right sub tree
+            IF nodeIn.rightPtr = nullPtr THEN
+              nstate <= read_stack;
+            END IF;
+          ELSIF to_integer(uns(key)) < to_integer(uns(nodeIn.key)) THEN
+            -- by default, write stack, read next node
+            IF nodeIn.leftPtr = nullPtr THEN
+              nstate <= isdone;         -- and return nodeIn.data
+            END IF;
+          ELSIF to_integer(uns(key)) > to_integer(uns(nodeIn.key)) THEN
+            -- by default, write stack, read next node
+            IF nodeIn.rightPtr = nullPtr THEN
+              nstate <= read_stack;
+            END IF;
+          END IF;
+        END IF;
+      WHEN read_stack => nstate <= compare_stack;
+      WHEN compare_stack =>
+        nstate <= read_stack;
+        IF to_integer(uns(key)) < to_integer(uns(nodeS.key)) OR saddr = 0 THEN
+          nstate <= isdone;
+        END IF;
+      WHEN write_stack          => nstate <= rnode_start;
+      WHEN read_extra_node      => nstate <= read_extra_node_wait;
+      WHEN read_extra_node_wait => nstate <= read_extra_node_wait;
+                                   IF node_response_port.done = '1' THEN
+                                     nstate <= read_extra_node_done;
+                                   END IF;
+      WHEN read_extra_node_done => nstate <= read_extra_node;
+                                   IF node_response_port.node.leftPtr = nullPtr THEN
+                                     nstate <= isdone;
+                                   END IF;
       WHEN isdone => nstate <= idle;
       WHEN OTHERS => nstate <= idle;
     END CASE;
@@ -76,6 +115,7 @@ BEGIN
       CASE state IS
         WHEN idle =>
           nowPtr <= rootPtr_IN;
+          saddr  <= 0;
         WHEN checkroot=>
           IF nowPtr = nullPtr THEN
             lookup_result.found <= '0';
@@ -87,20 +127,65 @@ BEGIN
         WHEN rnode_done =>
           nodeIn <= node_response_port.node;
         WHEN comparekey =>
-          IF to_integer(uns(key)) = to_integer(uns(nodeIn.key)) THEN
-            lookup_result.found <= '1';
-            lookup_result.data  <= nodeIn.data;
-          ELSIF to_integer(uns(key)) < to_integer(uns(nodeIn.key)) THEN
-            IF nodeIn.leftPtr = nullPtr THEN
-              lookup_result.found <= '0';
-            ELSE
-              nowPtr <= nodeIn.leftPtr;
+          IF lookup_larger = '0' THEN
+            IF to_integer(uns(key)) = to_integer(uns(nodeIn.key)) THEN
+              lookup_result.found <= '1';
+              lookup_result.data  <= nodeIn.data;
+            ELSIF to_integer(uns(key)) < to_integer(uns(nodeIn.key)) THEN
+              IF nodeIn.leftPtr = nullPtr THEN
+                lookup_result.found <= '0';
+              ELSE
+                nowPtr <= nodeIn.leftPtr;
+              END IF;
+            ELSIF to_integer(uns(key)) > to_integer(uns(nodeIn.key)) THEN
+              IF nodeIn.rightPtr = nullPtr THEN
+                lookup_result.found <= '0';
+              ELSE
+                nowPtr <= nodeIn.rightPtr;
+              END IF;
             END IF;
-          ELSIF to_integer(uns(key)) > to_integer(uns(nodeIn.key)) THEN
-            IF nodeIn.rightPtr = nullPtr THEN
+          ELSE
+            IF to_integer(uns(key)) = to_integer(uns(nodeIn.key)) THEN
+              IF nodeIn.rightPtr /= nullPtr THEN
+                nowPtr <= nodeIn.rightPtr;
+              END IF;
+            ELSIF to_integer(uns(key)) < to_integer(uns(nodeIn.key)) THEN
+              IF nodeIn.leftPtr = nullPtr THEN
+                lookup_result.found <= '1';
+                lookup_result.data  <= nodeIn.key;
+              ELSE
+                nowPtr <= nodeIn.leftPtr;
+              END IF;
+            ELSIF to_integer(uns(key)) > to_integer(uns(nodeIn.key)) THEN
+              IF nodeIn.rightPtr /= nullPtr THEN
+                nowPtr <= nodeIn.rightPtr;
+              END IF;
+            END IF;
+          END IF;
+        WHEN write_stack =>
+          myStack(saddr) <= nodeIn;
+          saddr          <= saddr +1;
+        WHEN read_stack =>
+          nodeS <= myStack(saddr-1);
+          saddr <= saddr -1;
+        WHEN read_extra_node =>
+          node_request_port.start <= '1';
+          node_request_port.cmd   <= rnode;
+          node_request_port.ptr   <= nowPtr;
+        WHEN read_extra_node_done =>
+          IF node_response_port.node.leftPtr = nullPtr THEN
+            lookup_result.found <= '1';
+            lookup_result.data  <= node_response_port.node.key;
+          ELSE
+            nowPtr <= node_response_port.node.leftPtr;
+          END IF;
+        WHEN compare_stack =>
+          IF to_integer(uns(key)) < to_integer(uns(nodeS.key)) THEN
+            lookup_result.found <= '1';
+            lookup_result.data  <= nodeS.key;
+          ELSE
+            IF saddr = 0 THEN
               lookup_result.found <= '0';
-            ELSE
-              nowPtr <= nodeIn.rightPtr;
             END IF;
           END IF;
         WHEN isdone => done <= '1';
@@ -109,5 +194,5 @@ BEGIN
     END IF;  -- if reset
     
   END PROCESS;
-  
+
 END ARCHITECTURE;

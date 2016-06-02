@@ -5,7 +5,7 @@ USE ieee.numeric_std.ALL;
 PACKAGE dsl_pack IS
   ALIAS slv IS STD_LOGIC_VECTOR;
 
-  TYPE dsl_cmd_type IS(insert, delete, lookup, delete_all);
+  TYPE dsl_cmd_type IS(insert, delete, lookup, delete_all, lookup_larger_cmd);
 
   TYPE dsl_com_in_type IS RECORD
     key   : slv(31 DOWNTO 0);
@@ -128,6 +128,10 @@ PACKAGE dsl_pack IS
                             checkroot,
                             rnode_start, rnode_wait, rnode_done,
                             comparekey,
+                            read_extra_node, read_extra_node_wait,
+                            read_extra_node_done,
+                            read_stack, write_stack,
+                            compare_stack,
                             isdone);
   -- DELETE ALL
   TYPE delete_all_state_type IS(idle, checkroot,

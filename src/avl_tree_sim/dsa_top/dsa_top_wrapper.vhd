@@ -149,6 +149,9 @@ BEGIN
       WHEN ALL_DELETE => dsl_request.cmd <= delete_all;
                          dsl_request.start <= request.start;
                          mmu_init_start_i  <= '0';
+      WHEN LOOKUP_L => dsl_request.cmd <= lookup_larger_cmd;
+                       dsl_request.start <= request.start;
+                       mmu_init_start_i  <= '0';
       WHEN OTHERS => dsl_request.cmd <= lookup;
                      dsl_request.start <= request.start;
                      mmu_init_start_i  <= '0';
