@@ -152,12 +152,13 @@ BEGIN
       CASE tb_state IS
         WHEN idle => test_index <= 0;
         WHEN command =>
-          dsa_req.cmd   <= myTest(test_index).cmd;
-          dsa_req.key   <= myTest(test_index).key;
-          dsa_req.data  <= myTest(test_index).data;
-          dsa_req.start <= '1';
+          dsa_req.cmd      <= myTest(test_index).cmd;
+          dsa_req.key      <= myTest(test_index).key;
+          dsa_req.data     <= myTest(test_index).data;
+          dsa_req.root_sel <= myTest(test_index).root_sel;
+          dsa_req.start    <= '1';
           -- update text extracting info
-          test_index    <= test_index + 1;
+          test_index       <= test_index + 1;
         WHEN check =>
           -- write to file
           write(outline, (test_index-1));

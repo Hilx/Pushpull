@@ -51,7 +51,9 @@ ARCHITECTURE syn_dsa_top_wrapper OF dsa_top_wrapper IS
   SIGNAL roots_data_in, root_updated : slv(31 DOWNTO 0);
   SIGNAL roots_data_out, root_stored : slv(31 DOWNTO 0);
   SIGNAL root_state, root_nstate     : roots_update_state_type;
-  SIGNAL roots_addr_i                : INTEGER;
+  SIGNAL roots_addr_i, root_sel      : INTEGER;
+  
+  
   
 BEGIN
   -- -------------------------------------
@@ -182,23 +184,23 @@ BEGIN
   -- -------------------------------------
   -- ---------- ROOTS --------------------
   -- -------------------------------------
-  rootfsm_comb : PROCESS(root_state, request, dsl_response_i, mmu_init_start_i)
+  rootfsm_comb : PROCESS(root_state, request, dsl_response_i, mmu_init_start_i,roots_addr_i)
   BEGIN
     root_nstate <= idle;
     CASE root_state IS
       WHEN idle => root_nstate <= idle;
-                   IF m mmu_init_start_i = '1' THEN
+                   IF mmu_init_start_i = '1' THEN
                      root_nstate <= init_start;
                    ELSIF request.start = '1' THEN
                      root_nstate <= read_new;
                    END IF;
-      WHEN read_new => nstate <= busy;
-      WHEN busy     => nstate <= busy;
+      WHEN read_new => root_nstate <= busy;
+      WHEN busy     => root_nstate <= busy;
                        IF dsl_response_i.done = '1' THEN
-                         nstate <= new_in;
+                         root_nstate <= new_in;
                        END IF;
-      WHEN new_in     => nstate      <= write_out;
-      WHEN write_out  => nstate      <= idle;
+      WHEN new_in     => root_nstate      <= write_out;
+      WHEN write_out  => root_nstate      <= idle;
       -- initialisations
       WHEN init_start => root_nstate <= init_w0;
       WHEN init_w0    => root_nstate <= init_w1;
@@ -212,7 +214,7 @@ BEGIN
     END CASE;
   END PROCESS;
 
-  rootfsm_reg : PROCESS()
+  rootfsm_reg : PROCESS
   BEGIN
     WAIT UNTIL clk'event AND clk = '1';
     root_state <= root_nstate;
@@ -252,7 +254,8 @@ BEGIN
     END IF;  -- if reset
 
   END PROCESS;
-  roots_addr <= slv(to_unsigned(roots_addr_i), ROOTS_RAM_ADDR_BITS);
+  roots_addr <= slv(to_unsigned(roots_addr_i, ROOTS_RAM_ADDR_BITS));
+  root_sel   <= request.root_sel;
   -- --------------------------------------
 
   dsl_request.key  <= request.key;

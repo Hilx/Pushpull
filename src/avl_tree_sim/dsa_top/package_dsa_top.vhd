@@ -15,10 +15,11 @@ PACKAGE dsa_top_pack IS
                          tra_state_done);
 
   TYPE dsa_request_type IS RECORD
-    cmd   : slv(2 DOWNTO 0);
-    key   : slv(31 DOWNTO 0);
-    data  : slv(31 DOWNTO 0);
-    start : STD_LOGIC;
+    cmd      : slv(2 DOWNTO 0);
+    key      : slv(31 DOWNTO 0);
+    data     : slv(31 DOWNTO 0);
+    start    : STD_LOGIC;
+    root_sel : INTEGER;
   END RECORD;
 
   -- roots stuff
