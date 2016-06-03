@@ -1,3 +1,4 @@
+-- hash table
 LIBRARY ieee;
 USE ieee.std_logic_1164.ALL;
 USE ieee.numeric_std.ALL;
@@ -10,6 +11,9 @@ ENTITY dsl_wrapper IS
   PORT(
     clk       : IN  STD_LOGIC;
     rst       : IN  STD_LOGIC;
+    -- root
+    root_in   : IN  STD_LOGIC_VECTOR(31 DOWNTO 0);
+    root_out  : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
     -- dsl communication
     dsl_in    : IN  dsl_com_in_type;
     dsl_out   : OUT dsl_com_out_type;
@@ -46,10 +50,8 @@ ARCHITECTURE syn_dsl_wrapper OF dsl_wrapper IS
 
   SIGNAL dsl_out_i : dsl_com_out_type;
 BEGIN
--- init
+  -- init
   mc_init.start <= '0';
-
-
   -- data structure logic overall control
   dsl_fsm_comb : PROCESS(dsl_state, dsl_in, done_bit)
   BEGIN
@@ -64,7 +66,8 @@ BEGIN
         dsl_nstate <= busy;
       WHEN busy =>
         dsl_nstate <= busy;             -- default
-        IF done_bit.ild = '1' OR done_bit.delete_all = '1' OR done_bit.init_hash = '1' THEN
+        IF done_bit.ild = '1' OR done_bit.delete_all = '1'
+          OR done_bit.init_hash = '1' THEN
           dsl_nstate <= done;
         END IF;
       WHEN done =>
@@ -81,10 +84,9 @@ BEGIN
     start_bit.delete_all <= '0';
     start_bit.init_hash  <= '0';
     dsl_out_i.done       <= '0';
-    -- dsl_out_i.data       <= x"7FFF0000";        -- indicating not looking up
     IF rst = CONST_RESET THEN
-      dsl_state <= idle;
-      dsl_out_i.data       <= x"00000000";  
+      dsl_state      <= idle;
+      dsl_out_i.data <= x"00000000";
     ELSE
       IF dsl_state = start THEN
         CASE dsl_in.cmd IS
@@ -171,10 +173,6 @@ BEGIN
     IF dsl_in.cmd = delete_all THEN
       alloc_out <= alloc_out_da;
     END IF;
-    
-
-    
-
   END PROCESS;
 
   -- ---------------------------------------------

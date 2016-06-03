@@ -1,3 +1,4 @@
+-- avl tree
 LIBRARY ieee;
 USE ieee.std_logic_1164.ALL;
 USE ieee.numeric_std.ALL;
@@ -10,7 +11,6 @@ ENTITY dsl_wrapper IS
   PORT(
     clk       : IN  STD_LOGIC;
     rst       : IN  STD_LOGIC;
-    sys_init  : IN  STD_LOGIC;
     -- root
     root_in   : IN  STD_LOGIC_VECTOR(31 DOWNTO 0);
     root_out  : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
@@ -83,18 +83,11 @@ BEGIN
     start_bit.delete     <= '0';
     start_bit.lookup     <= '0';
     start_bit.delete_all <= '0';
-
-    dsl_out_i.done <= '0';
-    -- dsl_out_i.data       <= x"7FFF0000";        -- indicating not looking up
+    dsl_out_i.done       <= '0';
     IF rst = CONST_RESET THEN
       dsl_state      <= idle;
       dsl_out_i.data <= x"00000000";
     ELSE
-      IF dsl_state = idle THEN
-      -- IF sys_init = '1' THEN          -- when memory allocator is initialised
-      --rootPtr <= nullPtr;           -- initialised rootPtr reg to nullPtr
-      -- END IF;
-      END IF;
       IF dsl_state = start THEN
         CASE dsl_in.cmd IS
           WHEN insert            => start_bit.insert     <= '1';

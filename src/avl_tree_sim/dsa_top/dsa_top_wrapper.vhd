@@ -1,3 +1,4 @@
+-- avl tree
 LIBRARY ieee;
 USE ieee.std_logic_1164.ALL;
 USE ieee.numeric_std.ALL;
@@ -24,27 +25,17 @@ END ENTITY dsa_top_wrapper;
 
 ARCHITECTURE syn_dsa_top_wrapper OF dsa_top_wrapper IS
   -- wiring signals
-  SIGNAL alloc_cmd, alloc_resp : allocator_com_type;
-
+  SIGNAL alloc_cmd, alloc_resp       : allocator_com_type;
   -- memory access arbitrator signals
   SIGNAL alloc_mc_cmd, alloc_mc_resp : mem_control_type;
   SIGNAL dsl_mc_cmd, dsl_mc_resp     : mem_control_type;
   SIGNAL maa_state, maa_nstate       : maa_state_type;
   SIGNAL mmu_init_done_i             : STD_LOGIC;
-
   -- client command translator signals
-  SIGNAL dsl_request  : dsl_com_in_type;
-  SIGNAL dsl_response : dsl_com_out_type;
-
-  -- FOR TESTING MALLOC NOW, translator signals
-  SIGNAL tra_state, tra_nstate : tra_state_type;
-
-  SIGNAL total_entry_offset : slv(31 DOWNTO 0);
-
-  SIGNAL mmu_init_start_i : STD_LOGIC;
-
-  SIGNAL dsl_response_i : dsl_com_out_type;
-
+  SIGNAL dsl_request                 : dsl_com_in_type;
+  SIGNAL dsl_response                : dsl_com_out_type;
+  SIGNAL mmu_init_start_i            : STD_LOGIC;
+  SIGNAL dsl_response_i              : dsl_com_out_type;
   -- multiple roots
   SIGNAL roots_we                    : STD_LOGIC;
   SIGNAL roots_addr                  : slv(ROOTS_RAM_ADDR_BITS-1 DOWNTO 0);
@@ -52,8 +43,6 @@ ARCHITECTURE syn_dsa_top_wrapper OF dsa_top_wrapper IS
   SIGNAL roots_data_out, root_stored : slv(31 DOWNTO 0);
   SIGNAL root_state, root_nstate     : roots_update_state_type;
   SIGNAL roots_addr_i, root_sel      : INTEGER;
-  
-  
   
 BEGIN
   -- -------------------------------------
@@ -73,7 +62,7 @@ BEGIN
       clk                => clk,
       rst                => rst,
       total_entry_offset => total_entry_offset,
-      mmu_init_bit       => mmu_init_start_i,  -- mmu_init_bit,
+      mmu_init_bit       => mmu_init_start_i,
       mmu_init_done      => mmu_init_done_i,
       -- Interval/DS communication
       argu               => alloc_cmd,
@@ -87,7 +76,6 @@ BEGIN
     PORT MAP(
       clk       => clk,
       rst       => rst,
-      sys_init  => mmu_init_start_i,
       -- root
       root_in   => root_stored,
       root_out  => root_updated,
@@ -179,12 +167,14 @@ BEGIN
                      mmu_init_start_i  <= '0';
     END CASE;
   END PROCESS;
-
+  dsl_request.key  <= request.key;
+  dsl_request.data <= request.data;
 
   -- -------------------------------------
   -- ---------- ROOTS --------------------
   -- -------------------------------------
-  rootfsm_comb : PROCESS(root_state, request, dsl_response_i, mmu_init_start_i,roots_addr_i)
+  rootfsm_comb : PROCESS(root_state, request, dsl_response_i,
+                         mmu_init_start_i, roots_addr_i)
   BEGIN
     root_nstate <= idle;
     CASE root_state IS
@@ -199,8 +189,8 @@ BEGIN
                        IF dsl_response_i.done = '1' THEN
                          root_nstate <= new_in;
                        END IF;
-      WHEN new_in     => root_nstate      <= write_out;
-      WHEN write_out  => root_nstate      <= idle;
+      WHEN new_in     => root_nstate <= write_out;
+      WHEN write_out  => root_nstate <= idle;
       -- initialisations
       WHEN init_start => root_nstate <= init_w0;
       WHEN init_w0    => root_nstate <= init_w1;
@@ -222,10 +212,6 @@ BEGIN
     IF rst = CONST_RESET THEN
       root_state <= idle;
     ELSE
-
-      -- -------------------------------
-      -- BETTER WITH CASE STATEMENTS!!!!!!!!!!!!!
-      
       IF root_state = idle THEN
         roots_addr_i <= root_sel;
       END IF;
@@ -238,7 +224,6 @@ BEGIN
       IF root_state = write_out THEN
         roots_we <= '1';
       END IF;
-
       -- roots initialisation (to nullPtrs)
       IF root_state = init_start THEN
         roots_addr_i  <= 0;
@@ -250,16 +235,11 @@ BEGIN
       IF root_state = init_au AND roots_addr_i /= MAX_ROOTS_RAM_ADDR THEN
         roots_addr_i <= roots_addr_i +1;
       END IF;
-      
     END IF;  -- if reset
-
   END PROCESS;
   roots_addr <= slv(to_unsigned(roots_addr_i, ROOTS_RAM_ADDR_BITS));
   root_sel   <= request.root_sel;
   -- --------------------------------------
-
-  dsl_request.key  <= request.key;
-  dsl_request.data <= request.data;
 
   -- FOR TESTING
   PTR_OUT <= alloc_resp.ptr;
