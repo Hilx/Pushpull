@@ -46,6 +46,9 @@ ARCHITECTURE syn_dsa_top_wrapper OF dsa_top_wrapper IS
   SIGNAL roots_data_out, root_stored : slv(31 DOWNTO 0);
   SIGNAL root_state, root_nstate     : roots_update_state_type;
   SIGNAL roots_addr_i, root_sel      : INTEGER;
+
+  SIGNAL create_start_bit, create_done_bit : STD_LOGIC;
+  SIGNAL dsl_start_bit                     : STD_LOGIC;
   
 BEGIN
   -- -------------------------------------
@@ -97,8 +100,8 @@ BEGIN
       mcin      => dsl_mc_resp,
       mcout     => dsl_mc_cmd
       );
-  dsl_data_out <= dsl_response_i.data;
-  DSA_DONE_BIT <= dsl_response_i.done OR mmu_init_done_i;
+
+  DSA_DONE_BIT <= dsl_done_bit OR mmu_init_done_i;
   -- -------------------------------------
   -- ----- MEMORY ACCESS ARBITRATOR ------
   -- -------------------------------------
@@ -158,28 +161,27 @@ BEGIN
         dsl_request.start <= '0';
         mmu_init_start_i  <= request.start;
       WHEN HASH_INIT => dsl_request.cmd <= init_hash;
-                        dsl_request.start <= request.start;
+                        dsl_request.start <= dsl_start_bit;
                         mmu_init_start_i  <= '0';
       WHEN INS_ITEM => dsl_request.cmd <= insert;
-                       dsl_request.start <= request.start;
+                       dsl_request.start <= dsl_start_bit;
                        mmu_init_start_i  <= '0';
       WHEN DEL_ITEM => dsl_request.cmd <= delete;
-                       dsl_request.start <= request.start;
+                       dsl_request.start <= dsl_start_bit;
                        mmu_init_start_i  <= '0';
       WHEN SER_ITEM => dsl_request.cmd <= lookup;
-                       dsl_request.start <= request.start;
+                       dsl_request.start <= dsl_start_bit;
                        mmu_init_start_i  <= '0';
       WHEN ALL_DELETE => dsl_request.cmd <= delete_all;
-                         dsl_request.start <= request.start;
+                         dsl_request.start <= dsl_start_bit;
                          mmu_init_start_i  <= '0';
       WHEN OTHERS => dsl_request.cmd <= lookup;
-                     dsl_request.start <= request.start;
+                     dsl_request.start <= dsl_start_bit;
                      mmu_init_start_i  <= '0';
     END CASE;
   END PROCESS;
   dsl_request.key  <= request.key;
   dsl_request.data <= request.data;
-
 
   -- -------------------------------------
   -- ---------- ROOTS --------------------
@@ -203,11 +205,21 @@ BEGIN
       WHEN new_in     => root_nstate <= write_out;
       WHEN write_out  => root_nstate <= idle;
       -- extra stuff
-      WHEN check_root =>
-      WHEN create_new =>
-      WHEN create_busy =>
-      WHEN start_dsl =>
-      WHEN isdone =>
+      WHEN check_root => root_nstate <= start_dsl;
+                         IF root_stored = nullPtr THEN
+                           IF request.cmd = insert THEN
+                             root_nstate <= create_new;
+                           ELSE
+                             root_nstate <= isdone;
+                           END IF;
+                         END IF;
+      WHEN create_new  => root_nstate <= create_busy;
+      WHEN create_busy => root_nstate <= create_busy;
+                          IF create_done_bit = '1' THEN
+                            root_nstate <= start_dsl;
+                          END IF;
+      WHEN start_dsl  => root_nstate <= busy;
+      WHEN isdone     => root_nstate <= idle;
       -- initialisations
       WHEN init_start => root_nstate <= init_w0;
       WHEN init_w0    => root_nstate <= init_w1;
@@ -224,16 +236,31 @@ BEGIN
   rootfsm_reg : PROCESS
   BEGIN
     WAIT UNTIL clk'event AND clk = '1';
-    root_state <= root_nstate;
-    roots_we   <= '0';
+    root_state       <= root_nstate;
+    roots_we         <= '0';
+    create_start_bit <= '0';
+    dsl_start_bit    <= '0';
+    dsl_done_bit     <= '0';
     IF rst = CONST_RESET THEN
       root_state <= idle;
     ELSE
       CASE root_state IS
-        WHEN idle      => roots_addr_i  <= root_sel;
-        WHEN read_new  => root_stored   <= roots_data_out;
-        WHEN new_in    => roots_data_in <= root_updated;
-        WHEN write_out => roots_we      <= '1';
+        WHEN idle       => roots_addr_i     <= root_sel;
+        WHEN read_new   => root_stored      <= roots_data_out;
+        WHEN new_in     => roots_data_in    <= root_updated;
+        WHEN write_out  => roots_we         <= '1';
+        -- extra stuff
+        WHEN create_new => create_start_bit <= '1';
+        WHEN start_dsl  => dsl_start_bit    <= '1';
+        WHEN isdone =>
+          dsl_done_bit <= '1';
+          IF request.cmd = SER_ITEM THEN
+            IF root_stored /= nullPtr THEN
+              dsl_data_out <= dsl_response_i.data;
+            ELSE
+              dsl_data_out <= (OTHERS => '1');  -- failed search
+            END IF;
+          END IF;
         -- init
         WHEN init_start =>
           roots_addr_i  <= 0;
