@@ -11,7 +11,8 @@ ENTITY dsl_init_hash IS
     rst                     : IN  STD_LOGIC;
     start_b                 : IN  STD_LOGIC;
     done_b                  : OUT STD_LOGIC;
-    alloc_in                : IN  STD_LOGIC;
+    alloc_in                : IN  allocator_com_type;
+    alloc_out :out allocator_com_type;
     mcin                    : IN  mem_control_type;
     mcout                   : OUT mem_control_type;
     tablePtr                : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
@@ -22,16 +23,16 @@ END ENTITY dsl_init_hash;
 ARCHITECTURE syn_dsl_init_hash OF dsl_init_hash IS
   ALIAS uns IS UNSIGNED;
   SIGNAL init_state, init_nstate : hash_init_state_type;
-  SIGNAL entry_count             : slv(31 DOWNTO 0);
+  SIGNAL entry_count,tablePtr_i             : slv(31 DOWNTO 0);
   SIGNAL mem_addr                : slv(31 DOWNTO 0);
-  SIGNAL tablePtr                : slv(31 DOWNTO 0);
+
 BEGIN
   -- ---------------------------------------------
   -- ---------- hash table initialisation --------
   -- -------- write nullPtr as hash entries ------
   -- ---------------------------------------------
   init_fsm_comb : PROCESS(start_b, init_state, mcin,
-                          entry_count)
+                          entry_count,alloc_in)
   BEGIN
     init_nstate <= idle;
     CASE init_state IS
@@ -45,7 +46,7 @@ BEGIN
                            IF alloc_in.done = '1' THEN
                              init_nstate <= malloc_done;
                            END IF;
-      WHEN malloc_done => wstart;
+      WHEN malloc_done => init_nstate <=wstart;
       WHEN wstart =>
         init_nstate <= wwait;
       WHEN wwait =>
@@ -81,17 +82,18 @@ BEGIN
 
           mcout.wdata             <= nullPtr;
           mcout.cmd               <= mwrite;
-          flag_initiating_entries <= '0'
+          flag_initiating_entries <= '0';
+  alloc_out.istype <= hash_entries;
           IF start_b = '1' THEN
             flag_initiating_entries <= '1';
           END IF;
         WHEN malloc_start => alloc_out.start <= '1';
                              alloc_out.istype <= hash_entries;
-        WHEN malloc_done => tablePtr <= alloc_in.ptr;
+        WHEN malloc_done => tablePtr_i <= alloc_in.ptr;
                             mem_addr <= alloc_in.ptr;
         WHEN wstart =>
           mcout.start <= '1';
-          entry_count <= slv(uns(tablePtr)+uns(entry_count) + 1);
+          entry_count <= slv(uns(entry_count) + 1);
         WHEN compute =>
           mem_addr <= slv(uns(mem_addr) + ADDR_WORD_OFF_DEC);
         WHEN done =>
@@ -100,6 +102,7 @@ BEGIN
       END CASE;
     END IF;
   END PROCESS;
-  alloc_out.istype <= hash_entries;
+
+  tablePtr<=tablePtr_i;
 
 END ARCHITECTURE;

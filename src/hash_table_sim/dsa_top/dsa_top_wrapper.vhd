@@ -49,8 +49,8 @@ ARCHITECTURE syn_dsa_top_wrapper OF dsa_top_wrapper IS
 
   SIGNAL create_start_bit, create_done_bit : STD_LOGIC;
   SIGNAL dsl_start_bit                     : STD_LOGIC;
+signal dsl_done_bit : std_logic;
 
-  SIGNAL root_stored, root_updated : STD_LOGIC_VECTOR(31 DOWNTO 0);
   
 BEGIN
   -- -------------------------------------
@@ -153,7 +153,7 @@ BEGIN
   -- ------------- STAGING ---------------
   -- -------------------------------------
 
-  tra_cmd_comb : PROCESS(request)
+  tra_cmd_comb : PROCESS(request, dsl_start_bit)
   BEGIN
     dsl_request.cmd <= lookup;
 
@@ -192,7 +192,7 @@ BEGIN
   -- ---------- ROOTS --------------------
   -- -------------------------------------
   rootfsm_comb : PROCESS(root_state, request, dsl_response_i,
-                         mmu_init_start_i, roots_addr_i)
+                         mmu_init_start_i, roots_addr_i,root_stored,create_done_bit)
   BEGIN
     root_nstate <= idle;
     CASE root_state IS
@@ -202,18 +202,18 @@ BEGIN
                    ELSIF request.start = '1' THEN
                      root_nstate <= read_new;
                    END IF;
-      WHEN read_new => root_nstate <= busy;
+      WHEN read_new => root_nstate <= check_root;
       WHEN busy     => root_nstate <= busy;
                        IF dsl_response_i.done = '1' THEN
-                         root_nstate <= new_in;
+                         root_nstate <= isdone;
                        END IF;
       WHEN new_in     => root_nstate <= write_out;
-      WHEN write_out  => root_nstate <= idle;
+      WHEN write_out  => root_nstate <= start_dsl;
       -- extra stuff
       WHEN check_root => root_nstate <= start_dsl;
                          IF root_stored = nullPtr THEN
-                           IF request.cmd = insert THEN
-                             root_nstate <= create_new;
+                           IF request.cmd = INS_ITEM THEN
+                              root_nstate <= create_new;
                            ELSE
                              root_nstate <= isdone;
                            END IF;
@@ -260,7 +260,7 @@ BEGIN
         WHEN create_done =>
           roots_we     <= '1';
           roots_addr_i <= root_sel;
-          roots_wdata  <= root_updated;
+          roots_data_in  <= root_updated;
           root_stored  <= root_updated;
         WHEN start_dsl => dsl_start_bit <= '1';
         WHEN isdone =>
@@ -268,14 +268,15 @@ BEGIN
           IF request.cmd = SER_ITEM THEN
             IF root_stored /= nullPtr THEN
               dsl_data_out <= dsl_response_i.data;
-            ELSE
-              dsl_data_out <= (OTHERS => '1');  -- failed search
-            END IF;
+            end if;
+else
+  dsl_data_out <= (OTHERS => '1');  -- failed search
+            
           END IF;
           IF request.cmd = ALL_DELETE THEN
             roots_we     <= '1';
             roots_addr_i <= root_sel;
-            roots_wdata  <= nullPtr;
+            roots_data_in  <= nullPtr;
           END IF;
         -- init
         WHEN init_start =>

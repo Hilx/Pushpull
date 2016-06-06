@@ -8,12 +8,13 @@ ENTITY mmu IS  -- memory management unit a.k.a memory allocator
   PORT(
     clk           : IN  STD_LOGIC;
     rst           : IN  STD_LOGIC;
-    hash_mem_base : IN  STD_LOGIC_VECTOR(31 DOWNTO 0);
+
     argu          : IN  allocator_com_type;
     retu          : OUT allocator_com_type;
     mcin          : IN  mem_control_type;
     mcout         : OUT mem_control_type;
-    mmu_init      : IN  mmu_init_type
+    mmu_init      : IN  mmu_init_type;
+    hash_mem_base : IN  STD_LOGIC_VECTOR(31 DOWNTO 0)
     );
 END ENTITY mmu;
 
@@ -122,10 +123,14 @@ BEGIN
             END IF;
           END IF;
         WHEN mmu_state_init =>          -- assign initial hdList address
-          hdList      <= MEM_BASE;
-          hdTableList <= hash_mem_base;
+
         WHEN OTHERS => NULL;
       END CASE;
+
+if mmu_init.done = '1' then
+          hdList      <= MEM_BASE;
+          hdTableList <= hash_mem_base;
+end if;
     END IF;  -- reset or not
   END PROCESS mmu_fsm_reg;
 

@@ -41,12 +41,13 @@ BEGIN
     PORT MAP(
       clk           => clk,
       rst           => rst,
-      hash_mem_base => hash_mem_base,
+ 
       argu          => argu,
       retu          => retu,
       mcin          => mmu_mcin,
       mcout         => mmu_mcout,
-      mmu_init      => mmu_init
+      mmu_init      => mmu_init,
+     hash_mem_base => hash_mem_base
       );
 
   mmu_init_done <= mmu_init.done;
@@ -56,9 +57,10 @@ BEGIN
       rst           => rst,
       start         => mmu_init_bit,
       done          => mmu_init.done,
-      hash_mem_base => hash_mem_base,
+
       mcin          => init_input,
-      mcout         => init_output
+      mcout         => init_output,
+      hash_mem_base => hash_mem_base
       );
 
   -- channel select FSM

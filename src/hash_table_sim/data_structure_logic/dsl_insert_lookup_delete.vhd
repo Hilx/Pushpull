@@ -198,7 +198,7 @@ BEGIN
             WHEN lookup =>
               lookup_result.data  <= nodeIn.data;
               lookup_result.found <= '0';
-              IF key = nodeIn.key THEN
+              IF to_integer(UNSIGNED(key)) = to_integer(UNSIGNED(nodeIn.key)) THEN
                 lookup_result.found <= '1';
               END IF;
             WHEN insert =>

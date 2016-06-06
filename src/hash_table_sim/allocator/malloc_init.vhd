@@ -10,9 +10,10 @@ ENTITY mmu_init_block IS
     rst           : IN  STD_LOGIC;
     start         : IN  STD_LOGIC;
     done          : OUT STD_LOGIC;
-    hash_mem_base : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
+ 
     mcin          : IN  mem_control_type;
-    mcout         : OUT mem_control_type
+    mcout         : OUT mem_control_type;
+   hash_mem_base : OUT STD_LOGIC_VECTOR(31 DOWNTO 0)
     );
 END ENTITY mmu_init_block;
 
@@ -24,7 +25,7 @@ ARCHITECTURE syn_mmu_init OF mmu_init_block IS
   SIGNAL table_count             : INTEGER RANGE 0 TO MAX_NUM_TABLES;
 BEGIN
   
-  init_fsm_comb : PROCESS(init_state, start, mcin, node_count)
+  init_fsm_comb : PROCESS(init_state, start, mcin, node_count,table_count)
   BEGIN
 
     CASE init_state IS
@@ -52,7 +53,7 @@ BEGIN
                             IF mcin.done = '1' THEN
                               init_nstate <= entry_compute;
                               IF table_count = MAX_NUM_TABLES THEN
-                                init_nstate <= isdone;
+                                init_nstate <= init_state_done;
                               END IF;
                             END IF;
       WHEN init_state_done =>
@@ -97,7 +98,7 @@ BEGIN
           mcout.start <= '1';
 
         WHEN entry_compute =>
-          IF node_count = 0 THEN
+          IF table_count = 0 THEN
             hash_mem_base <= currentNodePtr;
           END IF;
           
@@ -110,7 +111,7 @@ BEGIN
 
           currentNodePtr <= nextNodePtr;
           IF table_count = TOTAL_HASH_ENTRY -1 THEN
-            mcout.cmd <= nullPtr;
+            mcout.wdata <= nullPtr;
           END IF;
           table_count <= table_count +1;
         WHEN entry_write0 =>

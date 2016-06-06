@@ -15,17 +15,17 @@ ENTITY dsl_wrapper IS
     root_in               : IN  STD_LOGIC_VECTOR(31 DOWNTO 0);
     root_out              : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
     -- dsl communication
-    dsl_in                : IN  dsl_com_in_type;
-    dsl_out               : OUT dsl_com_out_type;
+    dsl_IN                : IN  dsl_com_in_type;
+    dsl_OUT               : OUT dsl_com_out_type;
     -- allocator communication
     alloc_in              : IN  allocator_com_type;
     alloc_out             : OUT allocator_com_type;
     -- memory controller communication
     mcin                  : IN  mem_control_type;
-    mcout                 : OUT mem_control_type
+    mcout                 : OUT mem_control_type;
     -- to init hash entries
     create_start_bit_port : IN  STD_LOGIC;
-    create_done_bit_port  : OUT STD_LOGIC;
+    create_done_bit_port  : OUT STD_LOGIC
     );
 END ENTITY dsl_wrapper;
 
@@ -159,8 +159,8 @@ BEGIN
 
   mem_part : PROCESS(dsl_in, node_access_mem_bit, mcin, mcout_ild,
                      mcout_naccess, mcout_da, mcout_init_hash,
-                     alloc_out_ild, alloc_out_da, alloc_in, mc_initm
-                     flag_initiating_entries)
+                     alloc_out_ild, alloc_out_da, alloc_in, mc_init,
+                     flag_initiating_entries,alloc_req_inithash)
   BEGIN
     -- defaults
     mcout          <= mc_init;
@@ -185,7 +185,7 @@ BEGIN
 
     alloc_in_ild       <= alloc_in;
     alloc_in_da        <= alloc_in;
-    alloc_req_inithash <= alloc_in;
+    alloc_res_inithash <= alloc_in;
     alloc_out          <= alloc_out_ild;
     IF flag_initiating_entries = '1' THEN
       alloc_out <= alloc_req_inithash;
@@ -222,7 +222,7 @@ BEGIN
       mcin                    => mcin_init_hash,
       mcout                   => mcout_init_hash,
       tablePtr                => root_out_inithash,
-      flag_initiating_entries => flag_initiating_entries,
+      flag_initiating_entries => flag_initiating_entries
       );
   ild0 : ENTITY dsl_ild
     PORT MAP(

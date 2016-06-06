@@ -128,7 +128,7 @@ BEGIN
         WHEN free_table=>
           alloc_out.start  <= '1';
           alloc_out.ptr    <= root_IN;
-          alloc_out.istype <= hash_entris;
+          alloc_out.istype <= hash_entries;
         WHEN isdone =>
           done <= '1';
         WHEN OTHERS => NULL;
