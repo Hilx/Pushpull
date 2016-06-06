@@ -160,7 +160,7 @@ BEGIN
   mem_part : PROCESS(dsl_in, node_access_mem_bit, mcin, mcout_ild,
                      mcout_naccess, mcout_da, mcout_init_hash,
                      alloc_out_ild, alloc_out_da, alloc_in, mc_init,
-                     flag_initiating_entries,alloc_req_inithash)
+                     flag_initiating_entries, alloc_req_inithash)
   BEGIN
     -- defaults
     mcout          <= mc_init;

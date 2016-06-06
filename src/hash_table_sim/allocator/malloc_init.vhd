@@ -10,10 +10,9 @@ ENTITY mmu_init_block IS
     rst           : IN  STD_LOGIC;
     start         : IN  STD_LOGIC;
     done          : OUT STD_LOGIC;
- 
     mcin          : IN  mem_control_type;
     mcout         : OUT mem_control_type;
-   hash_mem_base : OUT STD_LOGIC_VECTOR(31 DOWNTO 0)
+    hash_mem_base : OUT STD_LOGIC_VECTOR(31 DOWNTO 0)
     );
 END ENTITY mmu_init_block;
 
@@ -25,7 +24,7 @@ ARCHITECTURE syn_mmu_init OF mmu_init_block IS
   SIGNAL table_count             : INTEGER RANGE 0 TO MAX_NUM_TABLES;
 BEGIN
   
-  init_fsm_comb : PROCESS(init_state, start, mcin, node_count,table_count)
+  init_fsm_comb : PROCESS(init_state, start, mcin, node_count, table_count)
   BEGIN
 
     CASE init_state IS

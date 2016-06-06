@@ -30,15 +30,15 @@ ENTITY dsl_ild IS
 END ENTITY dsl_ild;
 
 ARCHITECTURE syn_dsl_ild OF dsl_ild IS
-  SIGNAL ild_state, ild_nstate : dsl_ild_state_type;
-  SIGNAL nodeIn                : hash_node_type;
-  SIGNAL nodePrev              : hash_node_type;
-  SIGNAL ptr_i, entryPtr       : slv(31 DOWNTO 0);
-  SIGNAL flag_first            : STD_LOGIC;
+  SIGNAL ild_state, ild_nstate                             : dsl_ild_state_type;
+  SIGNAL nodeIn                                            : hash_node_type;
+  SIGNAL nodePrev                                          : hash_node_type;
+  SIGNAL ptr_i, entryPtr                                   : slv(31 DOWNTO 0);
+  SIGNAL flag_first, flag_empty_bucket, flag_search_failed : STD_LOGIC;
 BEGIN
   ild_fsm_comb : PROCESS(ild_state, start, cmd, mcin, alloc_in, node_response,
                          entryPtr, nodePrev,
-                         key, nodeIn)
+                         key, nodeIn, flag_empty_bucket)
   BEGIN
     ild_nstate <= idle;                 -- default state
     CASE ild_state IS
@@ -122,7 +122,7 @@ BEGIN
         END IF;
       WHEN ins_wnode_done =>
         ild_nstate <= ins_nupdate_wait;
-        IF UNSIGNED(entryPtr) = UNSIGNED(nodePrev.ptr) AND to_integer(UNSIGNED(key)) > to_integer(UNSIGNED(nodeIn.key)) THEN
+        IF flag_empty_bucket = '1' OR (UNSIGNED(entryPtr) = UNSIGNED(nodePrev.ptr) AND to_integer(UNSIGNED(key)) > to_integer(UNSIGNED(nodeIn.key))) THEN
           ild_nstate <= ins_nentry_wait;
         END IF;
       WHEN ins_nupdate_wait =>
@@ -173,11 +173,13 @@ BEGIN
     alloc_out.start    <= '0';
     mcout.start        <= '0';
     node_request.start <= '0';
+
     IF rst = CONST_RESET THEN
       ild_state <= idle;
     ELSE
       CASE ild_state IS
         WHEN hashing_start =>
+          flag_search_failed                   <= '0';
           -- hashing
           entry_index(31 DOWNTO HASH_MASKING)  := (OTHERS => '0');
           entry_index(HASH_MASKING-1 DOWNTO 0) := UNSIGNED(key(HASH_MASKING-1 DOWNTO 0));
@@ -192,14 +194,26 @@ BEGIN
 
           nodePrev.ptr     <= entryPtr;  -- indicating no prev node
           nodePrev.nextPtr <= mcin.rdata;
+
+          IF mcin.rdata = nullPtr THEN
+            flag_search_failed <= '1';
+            flag_empty_bucket  <= '1';
+          ELSE
+            flag_empty_bucket <= '0';
+          END IF;
+
         WHEN isdone =>
           done <= '1';
           CASE cmd IS
             WHEN lookup =>
               lookup_result.data  <= nodeIn.data;
               lookup_result.found <= '0';
-              IF to_integer(UNSIGNED(key)) = to_integer(UNSIGNED(nodeIn.key)) THEN
-                lookup_result.found <= '1';
+              IF flag_search_failed = '1' THEN
+                lookup_result.found <= '0';
+              ELSE
+                IF to_integer(UNSIGNED(key)) = to_integer(UNSIGNED(nodeIn.key)) THEN
+                  lookup_result.found <= '1';
+                END IF;
               END IF;
             WHEN insert =>
             WHEN delete =>
@@ -248,22 +262,29 @@ BEGIN
             nodePrev.nextPtr <= alloc_in.ptr;
           END IF;
         WHEN ins_wnode_done =>
-          IF nodePrev.ptr = entryPtr AND to_integer(UNSIGNED(key)) > to_integer(UNSIGNED(nodeIn.key)) THEN
+          IF flag_empty_bucket = '1' THEN
             mcout.cmd   <= mwrite;
             mcout.addr  <= entryPtr;
             mcout.wdata <= alloc_in.ptr;
             mcout.start <= '1';
           ELSE
-            node_request.start <= '1';
-            node_request.cmd   <= wnode;
-            node_request.ptr   <= nodePrev.ptr;
-            node_request.node  <= nodePrev;
-            IF nodePrev.ptr = entryPtr OR (to_integer(UNSIGNED(key)) < to_integer(UNSIGNED(nodeIn.key))) THEN
-              node_request.ptr          <= nodeIn.ptr;
-              node_request.node.ptr     <= nodeIn.ptr;
-              node_request.node.key     <= nodeIn.key;
-              node_request.node.data    <= nodeIn.data;
-              node_request.node.nextPtr <= alloc_in.ptr;
+            IF nodePrev.ptr = entryPtr AND to_integer(UNSIGNED(key)) > to_integer(UNSIGNED(nodeIn.key)) THEN
+              mcout.cmd   <= mwrite;
+              mcout.addr  <= entryPtr;
+              mcout.wdata <= alloc_in.ptr;
+              mcout.start <= '1';
+            ELSE
+              node_request.start <= '1';
+              node_request.cmd   <= wnode;
+              node_request.ptr   <= nodePrev.ptr;
+              node_request.node  <= nodePrev;
+              IF nodePrev.ptr = entryPtr OR (to_integer(UNSIGNED(key)) < to_integer(UNSIGNED(nodeIn.key))) THEN
+                node_request.ptr          <= nodeIn.ptr;
+                node_request.node.ptr     <= nodeIn.ptr;
+                node_request.node.key     <= nodeIn.key;
+                node_request.node.data    <= nodeIn.data;
+                node_request.node.nextPtr <= alloc_in.ptr;
+              END IF;
             END IF;
           END IF;
         -- -----------------------

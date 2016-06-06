@@ -39,24 +39,24 @@ BEGIN
 
   mmu0 : ENTITY mmu
     PORT MAP(
-      clk           => clk,
-      rst           => rst,
- 
+      clk => clk,
+      rst => rst,
+
       argu          => argu,
       retu          => retu,
       mcin          => mmu_mcin,
       mcout         => mmu_mcout,
       mmu_init      => mmu_init,
-     hash_mem_base => hash_mem_base
+      hash_mem_base => hash_mem_base
       );
 
   mmu_init_done <= mmu_init.done;
   init0 : ENTITY mmu_init_block
     PORT MAP(
-      clk           => clk,
-      rst           => rst,
-      start         => mmu_init_bit,
-      done          => mmu_init.done,
+      clk   => clk,
+      rst   => rst,
+      start => mmu_init_bit,
+      done  => mmu_init.done,
 
       mcin          => init_input,
       mcout         => init_output,

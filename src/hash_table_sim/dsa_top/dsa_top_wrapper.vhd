@@ -49,7 +49,7 @@ ARCHITECTURE syn_dsa_top_wrapper OF dsa_top_wrapper IS
 
   SIGNAL create_start_bit, create_done_bit : STD_LOGIC;
   SIGNAL dsl_start_bit                     : STD_LOGIC;
-signal dsl_done_bit : std_logic;
+  SIGNAL dsl_done_bit                      : STD_LOGIC;
 
   
 BEGIN
@@ -192,7 +192,7 @@ BEGIN
   -- ---------- ROOTS --------------------
   -- -------------------------------------
   rootfsm_comb : PROCESS(root_state, request, dsl_response_i,
-                         mmu_init_start_i, roots_addr_i,root_stored,create_done_bit)
+                         mmu_init_start_i, roots_addr_i, root_stored, create_done_bit)
   BEGIN
     root_nstate <= idle;
     CASE root_state IS
@@ -213,7 +213,7 @@ BEGIN
       WHEN check_root => root_nstate <= start_dsl;
                          IF root_stored = nullPtr THEN
                            IF request.cmd = INS_ITEM THEN
-                              root_nstate <= create_new;
+                             root_nstate <= create_new;
                            ELSE
                              root_nstate <= isdone;
                            END IF;
@@ -258,25 +258,25 @@ BEGIN
         -- extra stuff
         WHEN create_new => create_start_bit <= '1';
         WHEN create_done =>
-          roots_we     <= '1';
-          roots_addr_i <= root_sel;
-          roots_data_in  <= root_updated;
-          root_stored  <= root_updated;
+          roots_we      <= '1';
+          roots_addr_i  <= root_sel;
+          roots_data_in <= root_updated;
+          root_stored   <= root_updated;
         WHEN start_dsl => dsl_start_bit <= '1';
         WHEN isdone =>
           dsl_done_bit <= '1';
           IF request.cmd = SER_ITEM THEN
             IF root_stored /= nullPtr THEN
               dsl_data_out <= dsl_response_i.data;
-            end if;
-else
-  dsl_data_out <= (OTHERS => '1');  -- failed search
+            END IF;
+          ELSE
+            dsl_data_out <= (OTHERS => '1');  -- failed search
             
           END IF;
           IF request.cmd = ALL_DELETE THEN
-            roots_we     <= '1';
-            roots_addr_i <= root_sel;
-            roots_data_in  <= nullPtr;
+            roots_we      <= '1';
+            roots_addr_i  <= root_sel;
+            roots_data_in <= nullPtr;
           END IF;
         -- init
         WHEN init_start =>

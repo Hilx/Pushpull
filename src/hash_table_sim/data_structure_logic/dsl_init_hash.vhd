@@ -12,7 +12,7 @@ ENTITY dsl_init_hash IS
     start_b                 : IN  STD_LOGIC;
     done_b                  : OUT STD_LOGIC;
     alloc_in                : IN  allocator_com_type;
-    alloc_out :out allocator_com_type;
+    alloc_out               : OUT allocator_com_type;
     mcin                    : IN  mem_control_type;
     mcout                   : OUT mem_control_type;
     tablePtr                : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
@@ -23,7 +23,7 @@ END ENTITY dsl_init_hash;
 ARCHITECTURE syn_dsl_init_hash OF dsl_init_hash IS
   ALIAS uns IS UNSIGNED;
   SIGNAL init_state, init_nstate : hash_init_state_type;
-  SIGNAL entry_count,tablePtr_i             : slv(31 DOWNTO 0);
+  SIGNAL entry_count, tablePtr_i : slv(31 DOWNTO 0);
   SIGNAL mem_addr                : slv(31 DOWNTO 0);
 
 BEGIN
@@ -32,7 +32,7 @@ BEGIN
   -- -------- write nullPtr as hash entries ------
   -- ---------------------------------------------
   init_fsm_comb : PROCESS(start_b, init_state, mcin,
-                          entry_count,alloc_in)
+                          entry_count, alloc_in)
   BEGIN
     init_nstate <= idle;
     CASE init_state IS
@@ -46,7 +46,7 @@ BEGIN
                            IF alloc_in.done = '1' THEN
                              init_nstate <= malloc_done;
                            END IF;
-      WHEN malloc_done => init_nstate <=wstart;
+      WHEN malloc_done => init_nstate <= wstart;
       WHEN wstart =>
         init_nstate <= wwait;
       WHEN wwait =>
@@ -83,7 +83,7 @@ BEGIN
           mcout.wdata             <= nullPtr;
           mcout.cmd               <= mwrite;
           flag_initiating_entries <= '0';
-  alloc_out.istype <= hash_entries;
+          alloc_out.istype        <= hash_entries;
           IF start_b = '1' THEN
             flag_initiating_entries <= '1';
           END IF;
@@ -103,6 +103,6 @@ BEGIN
     END IF;
   END PROCESS;
 
-  tablePtr<=tablePtr_i;
+  tablePtr <= tablePtr_i;
 
 END ARCHITECTURE;
