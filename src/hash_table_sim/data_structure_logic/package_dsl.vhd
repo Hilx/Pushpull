@@ -26,7 +26,8 @@ PACKAGE dsl_pack IS
     init_hash  : STD_LOGIC;
   END RECORD;
 
-  TYPE hash_init_state_type IS (idle, wstart, wwait, compute, done);
+  TYPE hash_init_state_type IS (idle, wstart, wwait, compute, done,
+                                malloc_start, malloc_wait, malloc_done);
 
   TYPE dsl_lookup_result_type IS RECORD
     data  : slv(31 DOWNTO 0);
@@ -75,6 +76,7 @@ PACKAGE dsl_pack IS
   TYPE da_state_type IS (idle,
                          rbucket, rbucket_wait, rbucket_check,
                          read_np, read_np_wait, free_node, free_node_wait,
+                         free_table, free_table_wait,
                          isdone);
 
 

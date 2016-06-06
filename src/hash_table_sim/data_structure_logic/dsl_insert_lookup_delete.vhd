@@ -9,6 +9,7 @@ ENTITY dsl_ild IS
   PORT(
     clk           : IN  STD_LOGIC;
     rst           : IN  STD_LOGIC;
+    root_IN       : IN  STD_LOGIC_VECTOR(31 DOWNTO 0);
     --
     start         : IN  STD_LOGIC;
     cmd           : IN  dsl_cmd_type;
@@ -180,8 +181,8 @@ BEGIN
           -- hashing
           entry_index(31 DOWNTO HASH_MASKING)  := (OTHERS => '0');
           entry_index(HASH_MASKING-1 DOWNTO 0) := UNSIGNED(key(HASH_MASKING-1 DOWNTO 0));
-          mcout.addr                           <= slv(UNSIGNED(MEM_BASE) + (entry_index SLL ADDR_WORD_OFF_BIN));
-          entryPtr                             <= slv(UNSIGNED(MEM_BASE) + (entry_index SLL ADDR_WORD_OFF_BIN));
+          mcout.addr                           <= slv(UNSIGNED(root_IN) + (entry_index SLL ADDR_WORD_OFF_BIN));
+          entryPtr                             <= slv(UNSIGNED(root_IN) + (entry_index SLL ADDR_WORD_OFF_BIN));
           mcout.cmd                            <= mread;
           mcout.start                          <= '1';
           flag_first                           <= '1';
@@ -292,7 +293,7 @@ BEGIN
     END IF;  -- if reset
 
   END PROCESS;
-
+  alloc_out.istype <= items;
 END ARCHITECTURE;
 
 

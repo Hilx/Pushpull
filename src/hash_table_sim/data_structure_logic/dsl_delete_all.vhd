@@ -9,6 +9,7 @@ ENTITY dsl_delete_all IS
   PORT(
     clk       : IN  STD_LOGIC;
     rst       : IN  STD_LOGIC;
+    root_IN   : IN  STD_LOGIC_VECTOR(31 DOWNTO 0);
     start     : IN  STD_LOGIC;
     done      : OUT STD_LOGIC;
     alloc_in  : IN  allocator_com_type;
@@ -39,7 +40,7 @@ BEGIN
       WHEN rbucket =>
         nstate <= rbucket_wait;
         IF flag_last = '1' THEN
-          nstate <= isdone;
+          nstate <= free_table;
         END IF;
       WHEN rbucket_wait =>
         nstate <= rbucket_wait;
@@ -48,11 +49,9 @@ BEGIN
         END IF;
       WHEN rbucket_check =>
         nstate <= read_np;
-
         IF mcin.rdata = nullPtr THEN    -- if hdBucket = nullptr
           nstate <= rbucket;
         END IF;
-        
       WHEN read_np =>
         nstate <= read_np_wait;
         IF nowPtr = nullPtr THEN
@@ -73,6 +72,11 @@ BEGIN
             nstate <= rbucket;
           END IF;
         END IF;
+      WHEN free_table      => nstate <= free_table_wait;
+      WHEN free_table_wait => nstate <= free_table_wait;
+                              IF alloc_in.done = '1' THEN
+                                nstate <= isdone;
+                              END IF;
       WHEN isdone =>
         nstate <= idle;
       WHEN OTHERS => nstate <= idle;
@@ -98,7 +102,8 @@ BEGIN
         WHEN rbucket =>
           IF flag_last = '0' THEN
             -- mem interaction
-            mcout.addr  <= slv(uns(MEM_BASE) + (to_unsigned(entry_count, 32) SLL ADDR_WORD_OFF_BIN));
+            mcout.addr <= slv(uns(root_IN) +
+                              (to_unsigned(entry_count, 32) SLL ADDR_WORD_OFF_BIN));
             mcout.start <= '1';
             -- internal fsm control
             entry_count <= entry_count + 1;
@@ -113,12 +118,17 @@ BEGIN
           mcout.addr  <= slv(uns(nowPtr));
           mcout.start <= '1';
         WHEN free_node =>
-          nextPtr         <= mcin.rdata;
+          nextPtr          <= mcin.rdata;
           -- free
-          alloc_out.start <= '1';
-          alloc_out.ptr   <= nowPtr;
+          alloc_out.start  <= '1';
+          alloc_out.ptr    <= nowPtr;
+          alloc_out.istype <= items;
         WHEN free_node_wait =>          -- IS IT SAFE TO UPDATE NOWPTR NOW?
           nowPtr <= nextPtr;    -- make sure pointer to be freed remain valid
+        WHEN free_table=>
+          alloc_out.start  <= '1';
+          alloc_out.ptr    <= root_IN;
+          alloc_out.istype <= hash_entris;
         WHEN isdone =>
           done <= '1';
         WHEN OTHERS => NULL;

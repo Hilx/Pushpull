@@ -6,20 +6,20 @@ USE work.malloc_pack.ALL;               -- memory management package
 
 ENTITY mmu IS  -- memory management unit a.k.a memory allocator
   PORT(
-    clk                : IN  STD_LOGIC;
-    rst                : IN  STD_LOGIC;
-    total_entry_offset : IN  STD_LOGIC_VECTOR;
-    argu               : IN  allocator_com_type;
-    retu               : OUT allocator_com_type;
-    mcin               : IN  mem_control_type;
-    mcout              : OUT mem_control_type;
-    mmu_init           : IN  mmu_init_type
+    clk           : IN  STD_LOGIC;
+    rst           : IN  STD_LOGIC;
+    hash_mem_base : IN  STD_LOGIC_VECTOR(31 DOWNTO 0);
+    argu          : IN  allocator_com_type;
+    retu          : OUT allocator_com_type;
+    mcin          : IN  mem_control_type;
+    mcout         : OUT mem_control_type;
+    mmu_init      : IN  mmu_init_type
     );
 END ENTITY mmu;
 
 ARCHITECTURE syn_mmu OF mmu IS
   ALIAS uns IS UNSIGNED;
-  SIGNAL hdList                : slv(31 DOWNTO 0);
+  SIGNAL hdList, hdTableList   : slv(31 DOWNTO 0);
   SIGNAL mmu_state, mmu_nstate : allocator_state_type;
 BEGIN
   
@@ -82,26 +82,48 @@ BEGIN
     ELSE
       CASE mmu_state IS
         WHEN mmu_state_malloc =>        -- in state malloc
-          retu.ptr    <= hdList;    -- retuurn the hdList as allocated pointer
-          -- to update list of mem blocks
-          mcout.start <= '1';
-          mcout.cmd   <= mread;
-          mcout.addr  <= hdList;
+          IF argu.istype = items THEN
+            retu.ptr    <= hdList;  -- retuurn the hdList as allocated pointer
+            -- to update list of mem blocks
+            mcout.start <= '1';
+            mcout.cmd   <= mread;
+            mcout.addr  <= hdList;
+          ELSE
+            retu.ptr    <= hdTableList;
+            mcout.start <= '1';
+            mcout.cmd   <= mread;
+            mcout.addr  <= hdTableList;
+          END IF;
         WHEN mmu_state_free =>          -- in state free
-          -- to update list of mem blocks
-          mcout.start <= '1';
-          mcout.cmd   <= mwrite;
-          mcout.addr  <= argu.ptr;      -- write in header of freed mem block
-          mcout.wdata <= hdList;        -- the old hdList
+          IF argu.istype = items THEN
+            -- to update list of mem blocks
+            mcout.start <= '1';
+            mcout.cmd   <= mwrite;
+            mcout.addr  <= argu.ptr;    -- write in header of freed mem block
+            mcout.wdata <= hdList;      -- the old hdList
+          ELSE
+            mcout.start <= '1';
+            mcout.cmd   <= mwrite;
+            mcout.addr  <= argu.ptr;    -- write in header of freed mem block
+            mcout.wdata <= hdTableList;  -- the old hdList
+          END IF;
         WHEN mmu_state_done =>          -- in state done
           retu.done <= '1';
           -- update hdList
-          hdList    <= mcin.rdata;      -- if malloc
-          IF argu.cmd = free THEN
-            hdList <= argu.ptr;
+          IF argu.istype = items THEN
+            hdList <= mcin.rdata;       -- if malloc
+            IF argu.cmd = free THEN
+              hdList <= argu.ptr;
+            END IF;
+          ELSE
+            hdTableList <= mcin.rdata;  -- if malloc
+            IF argu.cmd = free THEN
+              hdTableList <= argu.ptr;
+            END IF;
           END IF;
         WHEN mmu_state_init =>          -- assign initial hdList address
-          hdList <= slv(uns(MEM_BASE)+uns(total_entry_offset));
+          hdList      <= MEM_BASE;
+          hdTableList <= hash_mem_base;
         WHEN OTHERS => NULL;
       END CASE;
     END IF;  -- reset or not

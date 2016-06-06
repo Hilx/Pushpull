@@ -18,7 +18,7 @@ PACKAGE dsa_top_pack IS
 
   -- roots stuff
   TYPE roots_update_state_type IS(idle, read_new, busy, new_in, write_out,
-                                  check_root, create_new, create_busy,
+                                  check_root, create_new, create_busy, create_done,
                                   start_dsl,
                                   isdone,
                                   init_start, init_w0, init_w1, init_w2, init_au);

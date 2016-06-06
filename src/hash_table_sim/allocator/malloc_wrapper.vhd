@@ -7,17 +7,16 @@ USE work.malloc_pack.ALL;               -- memory management package
 
 ENTITY malloc_wrapper IS
   PORT(
-    clk                : IN  STD_LOGIC;
-    rst                : IN  STD_LOGIC;
-    total_entry_offset : IN  STD_LOGIC_VECTOR;
-    mmu_init_bit       : IN  STD_LOGIC;
-    mmu_init_done      : OUT STD_LOGIC;
+    clk           : IN  STD_LOGIC;
+    rst           : IN  STD_LOGIC;
+    mmu_init_bit  : IN  STD_LOGIC;
+    mmu_init_done : OUT STD_LOGIC;
     -- Interval/DS communication
-    argu               : IN  allocator_com_type;
-    retu               : OUT allocator_com_type;
+    argu          : IN  allocator_com_type;
+    retu          : OUT allocator_com_type;
     -- External/Memory communication
-    memcon_in          : IN  mem_control_type;
-    memcon_out         : OUT mem_control_type
+    memcon_in     : IN  mem_control_type;
+    memcon_out    : OUT mem_control_type
     );
 END ENTITY;
 
@@ -32,32 +31,34 @@ ARCHITECTURE syn_malloc_wrapper OF malloc_wrapper IS
   -- channel select FSM
   TYPE malloc_wrapper_state IS (mw_state_norm, mw_state_init);
   SIGNAL mw_state, mw_nstate : malloc_wrapper_state;
+
+  SIGNAL hash_mem_base : slv(31 DOWNTO 0);
 BEGIN
   -- wiring components
   mmu_init.start <= mmu_init_bit;
 
   mmu0 : ENTITY mmu
     PORT MAP(
-      clk                => clk,
-      rst                => rst,
-      total_entry_offset => total_entry_offset,
-      argu               => argu,
-      retu               => retu,
-      mcin               => mmu_mcin,
-      mcout              => mmu_mcout,
-      mmu_init           => mmu_init
+      clk           => clk,
+      rst           => rst,
+      hash_mem_base => hash_mem_base,
+      argu          => argu,
+      retu          => retu,
+      mcin          => mmu_mcin,
+      mcout         => mmu_mcout,
+      mmu_init      => mmu_init
       );
 
   mmu_init_done <= mmu_init.done;
   init0 : ENTITY mmu_init_block
     PORT MAP(
-      clk                => clk,
-      rst                => rst,
-      total_entry_offset => total_entry_offset,
-      start              => mmu_init_bit,
-      done               => mmu_init.done,
-      mcin               => init_input,
-      mcout              => init_output
+      clk           => clk,
+      rst           => rst,
+      start         => mmu_init_bit,
+      done          => mmu_init.done,
+      hash_mem_base => hash_mem_base,
+      mcin          => init_input,
+      mcout         => init_output
       );
 
   -- channel select FSM

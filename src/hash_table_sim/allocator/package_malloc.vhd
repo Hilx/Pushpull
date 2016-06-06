@@ -8,12 +8,14 @@ PACKAGE malloc_pack IS
   -- allocator control
 
   TYPE allocator_cmd_type IS (malloc, free);
+  TYPE hash_malloc_command_type IS (items, hash_entries);
 
   TYPE allocator_com_type IS RECORD
-    start : STD_LOGIC;
-    cmd   : allocator_cmd_type;
-    ptr   : slv(31 DOWNTO 0);
-    done  : STD_LOGIC;
+    start  : STD_LOGIC;
+    cmd    : allocator_cmd_type;
+    ptr    : slv(31 DOWNTO 0);
+    done   : STD_LOGIC;
+    istype : hash_malloc_command_type;
   END RECORD;
 
   -- allocator FSM
@@ -38,5 +40,8 @@ PACKAGE malloc_pack IS
                                      init_state_compute,
                                      init_state_write,
                                      init_state_wait,
-                                     init_state_done);
+                                     init_state_done,
+                                     entry_compute,
+                                     entry_write0,
+                                     entry_write1);
 END PACKAGE;

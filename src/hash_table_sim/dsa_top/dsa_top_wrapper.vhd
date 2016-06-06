@@ -49,6 +49,8 @@ ARCHITECTURE syn_dsa_top_wrapper OF dsa_top_wrapper IS
 
   SIGNAL create_start_bit, create_done_bit : STD_LOGIC;
   SIGNAL dsl_start_bit                     : STD_LOGIC;
+
+  SIGNAL root_stored, root_updated : STD_LOGIC_VECTOR(31 DOWNTO 0);
   
 BEGIN
   -- -------------------------------------
@@ -70,35 +72,37 @@ BEGIN
 
   alloc0 : ENTITY malloc_wrapper
     PORT MAP(
-      clk                => clk,
-      rst                => rst,
-      total_entry_offset => total_entry_offset,
-      mmu_init_bit       => mmu_init_start_i,
-      mmu_init_done      => mmu_init_done_i,
+      clk           => clk,
+      rst           => rst,
+      mmu_init_bit  => mmu_init_start_i,
+      mmu_init_done => mmu_init_done_i,
       -- Interval/DS communication
-      argu               => alloc_cmd,
-      retu               => alloc_resp,
+      argu          => alloc_cmd,
+      retu          => alloc_resp,
       -- External/Memory communication
-      memcon_in          => alloc_mc_resp,
-      memcon_out         => alloc_mc_cmd
+      memcon_in     => alloc_mc_resp,
+      memcon_out    => alloc_mc_cmd
       );
 
   dsl0 : ENTITY dsl_wrapper
     PORT MAP(
-      clk       => clk,
-      rst       => rst,
+      clk                   => clk,
+      rst                   => rst,
       -- root
-      root_in   => root_stored,
-      root_out  => root_updated,
+      root_IN               => root_stored,
+      root_OUT              => root_updated,
       -- dsl communication
-      dsl_in    => dsl_request,
-      dsl_out   => dsl_response_i,
+      dsl_in                => dsl_request,
+      dsl_out               => dsl_response_i,
       -- allocator communication
-      alloc_in  => alloc_resp,
-      alloc_out => alloc_cmd,
+      alloc_in              => alloc_resp,
+      alloc_out             => alloc_cmd,
       -- memory controller communication
-      mcin      => dsl_mc_resp,
-      mcout     => dsl_mc_cmd
+      mcin                  => dsl_mc_resp,
+      mcout                 => dsl_mc_cmd,
+      -- to init hash entries
+      create_start_bit_port => create_start_bit,
+      create_done_bit_port  => create_done_bit
       );
 
   DSA_DONE_BIT <= dsl_done_bit OR mmu_init_done_i;
@@ -142,6 +146,7 @@ BEGIN
       tmc_out <= alloc_mc_cmd;
     END IF;
   END PROCESS maa_connect;
+
 
   -- -------------------------------------
   -- ---- Client Request Translator ------
@@ -216,19 +221,20 @@ BEGIN
       WHEN create_new  => root_nstate <= create_busy;
       WHEN create_busy => root_nstate <= create_busy;
                           IF create_done_bit = '1' THEN
-                            root_nstate <= start_dsl;
+                            root_nstate <= create_done;
                           END IF;
-      WHEN start_dsl  => root_nstate <= busy;
-      WHEN isdone     => root_nstate <= idle;
+      WHEN create_done => root_nstate <= start_dsl;
+      WHEN start_dsl   => root_nstate <= busy;
+      WHEN isdone      => root_nstate <= idle;
       -- initialisations
-      WHEN init_start => root_nstate <= init_w0;
-      WHEN init_w0    => root_nstate <= init_w1;
-      WHEN init_w1    => root_nstate <= init_w2;
-      WHEN init_w2    => root_nstate <= init_au;
-      WHEN init_au    => root_nstate <= init_w0;
-                         IF roots_addr_i = MAX_ROOTS_RAM_ADDR THEN
-                           root_nstate <= idle;
-                         END IF;
+      WHEN init_start  => root_nstate <= init_w0;
+      WHEN init_w0     => root_nstate <= init_w1;
+      WHEN init_w1     => root_nstate <= init_w2;
+      WHEN init_w2     => root_nstate <= init_au;
+      WHEN init_au     => root_nstate <= init_w0;
+                          IF roots_addr_i = MAX_ROOTS_RAM_ADDR THEN
+                            root_nstate <= idle;
+                          END IF;
       WHEN OTHERS => root_nstate <= idle;
     END CASE;
   END PROCESS;
@@ -251,7 +257,12 @@ BEGIN
         WHEN write_out  => roots_we         <= '1';
         -- extra stuff
         WHEN create_new => create_start_bit <= '1';
-        WHEN start_dsl  => dsl_start_bit    <= '1';
+        WHEN create_done =>
+          roots_we     <= '1';
+          roots_addr_i <= root_sel;
+          roots_wdata  <= root_updated;
+          root_stored  <= root_updated;
+        WHEN start_dsl => dsl_start_bit <= '1';
         WHEN isdone =>
           dsl_done_bit <= '1';
           IF request.cmd = SER_ITEM THEN
@@ -260,6 +271,11 @@ BEGIN
             ELSE
               dsl_data_out <= (OTHERS => '1');  -- failed search
             END IF;
+          END IF;
+          IF request.cmd = ALL_DELETE THEN
+            roots_we     <= '1';
+            roots_addr_i <= root_sel;
+            roots_wdata  <= nullPtr;
           END IF;
         -- init
         WHEN init_start =>
@@ -277,6 +293,7 @@ BEGIN
   END PROCESS;
   roots_addr <= slv(to_unsigned(roots_addr_i, ROOTS_RAM_ADDR_BITS));
   root_sel   <= request.root_sel;
+
   -- --------------------------------------
 
   -- FOR TESTING

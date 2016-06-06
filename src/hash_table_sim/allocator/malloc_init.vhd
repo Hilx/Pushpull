@@ -6,13 +6,13 @@ USE work.malloc_pack.ALL;
 
 ENTITY mmu_init_block IS
   PORT(
-    clk                : IN  STD_LOGIC;
-    rst                : IN  STD_LOGIC;
-    total_entry_offset : IN  STD_LOGIC_VECTOR;
-    start              : IN  STD_LOGIC;
-    done               : OUT STD_LOGIC;
-    mcin               : IN  mem_control_type;
-    mcout              : OUT mem_control_type
+    clk           : IN  STD_LOGIC;
+    rst           : IN  STD_LOGIC;
+    start         : IN  STD_LOGIC;
+    done          : OUT STD_LOGIC;
+    hash_mem_base : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
+    mcin          : IN  mem_control_type;
+    mcout         : OUT mem_control_type
     );
 END ENTITY mmu_init_block;
 
@@ -21,6 +21,7 @@ ARCHITECTURE syn_mmu_init OF mmu_init_block IS
   SIGNAL currentNodePtr          : slv(31 DOWNTO 0);
   SIGNAL init_state, init_nstate : initialisation_state_type;
   SIGNAL node_count              : INTEGER RANGE 0 TO LIST_LENGTH;
+  SIGNAL table_count             : INTEGER RANGE 0 TO MAX_NUM_TABLES;
 BEGIN
   
   init_fsm_comb : PROCESS(init_state, start, mcin, node_count)
@@ -41,9 +42,19 @@ BEGIN
         IF mcin.done = '1' THEN
           init_nstate <= init_state_compute;
           IF node_count = LIST_LENGTH THEN
-            init_nstate <= init_state_done;
+            -- init_nstate <= init_state_done;
+            init_nstate <= entry_compute;
           END IF;
         END IF;
+      WHEN entry_compute => init_nstate <= entry_write0;
+      WHEN entry_write0  => init_nstate <= entry_write1;
+      WHEN entry_write1  => init_nstate <= entry_write1;
+                            IF mcin.done = '1' THEN
+                              init_nstate <= entry_compute;
+                              IF table_count = MAX_NUM_TABLES THEN
+                                init_nstate <= isdone;
+                              END IF;
+                            END IF;
       WHEN init_state_done =>
         init_nstate <= init_state_idle;
       WHEN OTHERS =>
@@ -66,8 +77,9 @@ BEGIN
       
       CASE init_state IS
         WHEN init_state_idle =>
-          currentNodePtr <= slv(uns(MEM_BASE) + uns(total_entry_offset));
+          currentNodePtr <= slv(uns(MEM_BASE));
           node_count     <= 0;
+          table_count    <= 0;
         WHEN init_state_compute =>
           nextNodePtr    := slv(uns(currentNodePtr) + uns(MEM_BLOCK_SIZE));
                                         -- mem conrtol code
@@ -82,6 +94,26 @@ BEGIN
                                         -- increment node count
           node_count <= node_count + 1;
         WHEN init_state_write =>
+          mcout.start <= '1';
+
+        WHEN entry_compute =>
+          IF node_count = 0 THEN
+            hash_mem_base <= currentNodePtr;
+          END IF;
+          
+          nextNodePtr := slv(uns(currentNodePtr)
+                             +to_unsigned(TOTAL_HASH_ENTRY, 32));
+
+          mcout.addr  <= currentNodePtr;
+          mcout.wdata <= nextNodePtr;
+          mcout.cmd   <= mwrite;
+
+          currentNodePtr <= nextNodePtr;
+          IF table_count = TOTAL_HASH_ENTRY -1 THEN
+            mcout.cmd <= nullPtr;
+          END IF;
+          table_count <= table_count +1;
+        WHEN entry_write0 =>
           mcout.start <= '1';
         WHEN init_state_done =>
           done <= '1';
